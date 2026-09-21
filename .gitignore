@@ -25,11 +25,12 @@ webapp/dist
 *.sln
 *.sw?
 
-# Mobile
-mobile-app/.expo
-mobile-app/ios/Pods
-mobile-app/android/.gradle
-mobile-app/android/app/build
+# Mobile / iOS
+ios/**/xcuserdata/
+ios/**/DerivedData/
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+!ios/project.yml
 
 # Cursor / agent skills (local only)
 .agents/

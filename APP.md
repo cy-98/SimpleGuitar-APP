@@ -201,11 +201,12 @@ Scale Pulse
 ```
 scale-pulse/
 ├── APP.md
-├── webapp/          # Web 源码
-└── mobile-app/      # 移动端源码（预留）
+├── packages/core/   # Web 共享大调 / 指板 / pitch（TS）
+├── webapp/          # Web（react-server + Vite Pages）
+└── ios/             # iOS（SwiftUI，需 Mac + Xcode）
 ```
 
-本地运行 Web：
+### Web
 
 ```bash
 # 仓库根目录
@@ -214,6 +215,16 @@ npm run dev
 # 或
 cd webapp && npm install && npm run dev
 ```
+
+### iOS
+
+需 **macOS + Xcode**（Windows 无法编译）。见 [`ios/README.md`](./ios/README.md)。
+
+```bash
+cd ios && xcodegen generate && open ScalePulse.xcodeproj
+```
+
+节拍按**前台练习**设计，锁屏/后台不强制保活。
 
 ---
 
