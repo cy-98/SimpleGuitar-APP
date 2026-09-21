@@ -5,13 +5,20 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "jsx": "preserve",
-    "types": ["react/experimental", "react-dom/experimental"],
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", ".react-server/**/*.ts"]
+  "include": [
+    "App.tsx",
+    "main.tsx",
+    "vite.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".react-server/**/*.ts"
+  ]
 }

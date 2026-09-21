@@ -6,12 +6,21 @@
   "scripts": {
     "dev": "react-server ./App.tsx",
     "build": "react-server build ./App.tsx",
-    "start": "react-server start"
+    "start": "react-server start",
+    "dev:pages": "vite",
+    "build:pages": "vite build",
+    "preview:pages": "vite preview"
   },
   "dependencies": {
-    "@lazarv/react-server": "latest"
+    "@lazarv/react-server": "latest",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0"
   }
 }

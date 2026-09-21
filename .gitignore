@@ -12,6 +12,7 @@ dist
 dist-ssr
 .react-server
 *.local
+webapp/dist
 
 # Editor directories and files
 .vscode/*
@@ -29,3 +30,9 @@ mobile-app/.expo
 mobile-app/ios/Pods
 mobile-app/android/.gradle
 mobile-app/android/app/build
+
+# Cursor / agent skills (local only)
+.agents/
+.cursor/
+design-system/
+skills-lock.json

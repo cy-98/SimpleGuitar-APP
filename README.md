@@ -16,25 +16,16 @@ scale-pulse/
 ## Web（`webapp/`）
 
 ```bash
-# 在仓库根目录
+# 开发（react-server）
 npm run dev
 
-# 或进入 webapp
-cd webapp
-npm install
-npm run dev
+# 静态站构建（GitHub Pages / Vite）
+npm run build:pages
 ```
 
-生产：
+生产 Pages 地址（部署后）：
 
-```bash
-npm run build
-npm start
-```
-
-技术栈：[@lazarv/react-server](https://react-server.dev/) + Web Audio。
-
-功能详见 [APP.md](./APP.md)。
+https://cy-98.github.io/SimpleGuitar-APP/
 
 ---
 
