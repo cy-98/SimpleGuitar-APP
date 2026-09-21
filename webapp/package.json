@@ -1,0 +1,17 @@
+{
+  "name": "scale-pulse-webapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "react-server ./App.tsx",
+    "build": "react-server build ./App.tsx",
+    "start": "react-server start"
+  },
+  "dependencies": {
+    "@lazarv/react-server": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}

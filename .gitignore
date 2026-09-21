@@ -23,3 +23,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Mobile
+mobile-app/.expo
+mobile-app/ios/Pods
+mobile-app/android/.gradle
+mobile-app/android/app/build

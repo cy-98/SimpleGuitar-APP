@@ -2,16 +2,13 @@
   "name": "scale-pulse",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "description": "Scale Pulse monorepo — webapp + mobile-app",
   "scripts": {
-    "dev": "react-server ./App.tsx",
-    "build": "react-server build ./App.tsx",
-    "start": "react-server start"
-  },
-  "dependencies": {
-    "@lazarv/react-server": "latest"
-  },
-  "devDependencies": {
-    "typescript": "^5.8.0"
+    "dev": "npm run dev --prefix webapp",
+    "build": "npm run build --prefix webapp",
+    "start": "npm run start --prefix webapp",
+    "dev:web": "npm run dev --prefix webapp",
+    "build:web": "npm run build --prefix webapp",
+    "start:web": "npm run start --prefix webapp"
   }
 }

@@ -1,10 +1,26 @@
 # Scale Pulse
 
-节拍器 + 大调调内级数练习，基于 [@lazarv/react-server](https://react-server.dev/)。
+节拍器 + 大调调内级数练习。仓库按平台拆分源码：
 
-## 运行
+```
+scale-pulse/
+├── APP.md           # 产品说明（Web / Mobile 共用）
+├── webapp/          # Web 应用源码（当前可运行）
+├── mobile-app/      # 移动端源码（目录已预留）
+├── design-system/   # 设计相关
+└── package.json     # 根脚本，转发到 webapp
+```
+
+---
+
+## Web（`webapp/`）
 
 ```bash
+# 在仓库根目录
+npm run dev
+
+# 或进入 webapp
+cd webapp
 npm install
 npm run dev
 ```
@@ -16,8 +32,12 @@ npm run build
 npm start
 ```
 
-## 功能
+技术栈：[@lazarv/react-server](https://react-server.dev/) + Web Audio。
 
-- 节拍器：BPM、拍号、重拍音色、拍位高亮
-- 静默细分：听四分，界面显示八分/十六分
-- 调内级数与抽问练习
+功能详见 [APP.md](./APP.md)。
+
+---
+
+## Mobile（`mobile-app/`）
+
+目录已预留，工程尚未初始化。说明见 [`mobile-app/README.md`](./mobile-app/README.md)。

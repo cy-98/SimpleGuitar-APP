@@ -1,4 +1,4 @@
-﻿/** Pitch-class of natural letter names (C=0). */
+/** Pitch-class of natural letter names (C=0). */
 const NATURAL_PC: Record<string, number> = {
   C: 0,
   D: 2,
@@ -10,6 +10,9 @@ const NATURAL_PC: Record<string, number> = {
 }
 
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const
+
+/** Natural letter cycle C→B (heptatonic order). */
+export const NATURAL_CYCLE = LETTERS
 
 /** Major scale: W W H W W W H in semitones from root. */
 export const MAJOR_INTERVALS = [0, 2, 4, 5, 7, 9, 11] as const
@@ -88,6 +91,24 @@ export function majorScaleDegrees(root: string): ScaleDegree[] {
     solfege: SOLFEGE[i]!,
     note,
   }))
+}
+
+/** Map natural letter → scale degree using scale spelling order (handles E#/Cb). */
+export function degreesByLetter(root: string): Map<string, ScaleDegree> {
+  const { letter } = parseRoot(root)
+  const startIdx = LETTERS.indexOf(letter as (typeof LETTERS)[number])
+  const degrees = majorScaleDegrees(root)
+  const map = new Map<string, ScaleDegree>()
+  for (let i = 0; i < degrees.length; i++) {
+    const scaleLetter = LETTERS[(startIdx + i) % 7]!
+    map.set(scaleLetter, degrees[i]!)
+  }
+  return map
+}
+
+/** Natural letter of a spelled note (F# → F, Bb → B). */
+export function noteLetter(note: string): string {
+  return note[0]!.toUpperCase()
 }
 
 export function isMajorKey(value: string): value is MajorKey {
