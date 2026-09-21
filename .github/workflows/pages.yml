@@ -30,7 +30,7 @@ jobs:
 
       - name: Install
         working-directory: webapp
-        run: npm ci
+        run: npm install
 
       - name: Build static site
         working-directory: webapp
