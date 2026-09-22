@@ -2,7 +2,7 @@
 
 import { midiToFreq, noteToMidi } from "@scale-pulse/core";
 import {
-  getAudioContext,
+  getMasterGain,
   getMasterVolume,
   resumeAudio,
 } from "./voices";
@@ -32,7 +32,7 @@ export async function playSungMidi(midi: number): Promise<void> {
   osc.connect(filter);
   osc2.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getMasterGain(ctx));
 
   const peak = 0.22 * master;
   gain.gain.setValueAtTime(0.0001, t);

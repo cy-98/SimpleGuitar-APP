@@ -37,17 +37,23 @@ import {
   DEFAULT_SOUND,
   DEFAULT_VOLUME,
   SOUNDS,
+  isAudioRunning,
   previewSound,
   readStoredSound,
   readStoredVolume,
+  resumeAudio,
   setMasterVolume,
   storeSound,
   storeVolume,
+  unlockAudioSync,
   type SoundId,
 } from "../audio/voices";
 import { playSungMidi, playSungNote } from "../audio/pitch";
 
 const MUTE_UPBEATS_KEY = "scale-pulse-mute-upbeats";
+
+const AUDIO_BLOCKED_HINT =
+  "浏览器还没开启声音：请再点一次播放，并确认 iPhone 未开静音、媒体音量已调高。";
 
 function readMuteUpbeats(): boolean {
   try {
@@ -136,8 +142,13 @@ export default function ScalePulse() {
   const [muteUpbeats, setMuteUpbeats] = useState(() =>
     typeof window === "undefined" ? false : readMuteUpbeats(),
   );
+  const [audioHint, setAudioHint] = useState<string | null>(null);
 
   const metroRef = useRef<MetronomeEngine | null>(null);
+
+  function syncAudioHint(): void {
+    setAudioHint(isAudioRunning() ? null : AUDIO_BLOCKED_HINT);
+  }
   const tonicLetter = key[0]!.toUpperCase();
   const tonicIdx = Math.max(
     0,
@@ -168,6 +179,32 @@ export default function ScalePulse() {
   useEffect(() => {
     setMasterVolume(volume);
   }, [volume]);
+
+  useEffect(() => {
+    const unlockFromGesture = () => {
+      unlockAudioSync();
+      if (isAudioRunning()) {
+        setAudioHint(null);
+      }
+    };
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    document.addEventListener("touchstart", unlockFromGesture, opts);
+    document.addEventListener("pointerdown", unlockFromGesture, opts);
+    return () => {
+      document.removeEventListener("touchstart", unlockFromGesture, opts);
+      document.removeEventListener("pointerdown", unlockFromGesture, opts);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!metroRef.current?.isRunning) return;
+      void resumeAudio().then(() => syncAudioHint());
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     const meta = themeMeta(theme);
@@ -228,29 +265,37 @@ export default function ScalePulse() {
   }, [muteUpbeats]);
 
   async function togglePlay() {
+    unlockAudioSync();
     const metro = metroRef.current;
     if (!metro) return;
     if (metro.isRunning) {
       metro.stop();
       setRunning(false);
       setTick(null);
+      setAudioHint(null);
     } else {
       await metro.start();
       setRunning(true);
+      syncAudioHint();
     }
   }
 
   function changeKey(next: MajorKey, opts?: { silent?: boolean }) {
     setKey(next);
-    if (!opts?.silent) void playSungNote(next);
+    if (!opts?.silent) {
+      unlockAudioSync();
+      void playSungNote(next).then(() => syncAudioHint());
+    }
   }
 
   function selectChartNote(note: string) {
-    void playSungNote(note);
+    unlockAudioSync();
+    void playSungNote(note).then(() => syncAudioHint());
   }
 
   function selectFretDot(dot: FretDot) {
-    void playSungMidi(dot.midi);
+    unlockAudioSync();
+    void playSungMidi(dot.midi).then(() => syncAudioHint());
     if (dot.isTonic && isMajorKey(dot.degree.note)) {
       setKey(dot.degree.note);
     }
@@ -270,10 +315,11 @@ export default function ScalePulse() {
   }
 
   function changeSound(id: SoundId) {
+    unlockAudioSync();
     setSound(id);
     storeSound(id);
     metroRef.current?.setSound(id);
-    void previewSound(id);
+    void previewSound(id).then(() => syncAudioHint());
   }
 
   function changeVolume(value: number) {
@@ -350,6 +396,7 @@ export default function ScalePulse() {
                   className="stage"
                   aria-pressed={running}
                   aria-label={running ? "暂停" : "播放"}
+                  onPointerDown={() => unlockAudioSync()}
                   onClick={() => void togglePlay()}
                 >
                   {running ? (
@@ -822,6 +869,20 @@ export default function ScalePulse() {
             </section>
           )}
         </main>
+
+        {audioHint ? (
+          <div
+            className="audio-hint"
+            role="status"
+            aria-live="polite"
+            onPointerDown={() => {
+              unlockAudioSync();
+              syncAudioHint();
+            }}
+          >
+            {audioHint}
+          </div>
+        ) : null}
 
         <nav className="tabbar-dock" aria-label="主导航">
           <div className="tabbar">

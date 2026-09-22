@@ -1411,6 +1411,18 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Floating black pill tab bar */
+.audio-hint {
+  margin: 0 var(--screen-pad-x) 0.5rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--pale-red-fg);
+  background: var(--pale-red-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+}
+
 .tabbar-dock {
   padding: 0.35rem var(--screen-pad-x) calc(0.65rem + var(--safe-bottom));
   background: transparent;
