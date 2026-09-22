@@ -2,6 +2,7 @@ import {
   getAudioContext,
   playTick,
   resumeAudio,
+  unlockAudioSync,
   type SoundId,
 } from "../audio/voices";
 
@@ -87,6 +88,7 @@ export class MetronomeEngine {
 
   async start(): Promise<void> {
     if (this.running) return;
+    unlockAudioSync();
     const ctx = await resumeAudio();
     this.running = true;
     this.currentBeat = 0;

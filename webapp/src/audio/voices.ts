@@ -72,11 +72,53 @@ let masterGain: GainNode | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 let masterVolume = DEFAULT_VOLUME;
 
+function createAudioContext(): AudioContext {
+  const w = window as Window & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+  const Ctor = w.AudioContext ?? w.webkitAudioContext;
+  if (!Ctor) {
+    throw new Error("Web Audio API is not available");
+  }
+  return new Ctor();
+}
+
 export function getAudioContext(): AudioContext {
   if (!sharedCtx) {
-    sharedCtx = new AudioContext();
+    sharedCtx = createAudioContext();
   }
   return sharedCtx;
+}
+
+export function getAudioContextState(): AudioContextState | "missing" {
+  return sharedCtx?.state ?? "missing";
+}
+
+/** Play a 1-sample buffer — required by iOS Safari in the same user gesture as resume(). */
+function playSilentUnlockPulse(ctx: AudioContext, output: GainNode): void {
+  const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(output);
+  const t = ctx.currentTime;
+  src.start(t);
+  src.stop(t + 0.002);
+}
+
+/**
+ * Unlock audio synchronously inside touchstart / pointerdown / click.
+ * On iOS, awaiting resume() before this runs often leaves the context suspended.
+ */
+export function unlockAudioSync(): AudioContext {
+  const ctx = getAudioContext();
+  const output = getOutput(ctx);
+  void ctx.resume();
+  try {
+    playSilentUnlockPulse(ctx, output);
+  } catch {
+    /* ignore */
+  }
+  return ctx;
 }
 
 function getOutput(ctx: AudioContext): GainNode {
@@ -86,6 +128,11 @@ function getOutput(ctx: AudioContext): GainNode {
     masterGain.connect(ctx.destination);
   }
   return masterGain;
+}
+
+/** Route synthesized tones through the same master volume as the metronome. */
+export function getMasterGain(ctx: AudioContext): GainNode {
+  return getOutput(ctx);
 }
 
 export function setMasterVolume(value: number): void {
@@ -104,12 +151,31 @@ export function getMasterVolume(): number {
 }
 
 export async function resumeAudio(): Promise<AudioContext> {
-  const ctx = getAudioContext();
-  if (ctx.state === "suspended") {
-    await ctx.resume();
+  const ctx = unlockAudioSync();
+  if (ctx.state !== "running") {
+    try {
+      await ctx.resume();
+    } catch {
+      /* ignore */
+    }
+  }
+  if (ctx.state !== "running") {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
+    try {
+      await ctx.resume();
+    } catch {
+      /* ignore */
+    }
   }
   getOutput(ctx);
   return ctx;
+}
+
+/** True when Web Audio is active enough to schedule sounds. */
+export function isAudioRunning(): boolean {
+  return sharedCtx?.state === "running";
 }
 
 /** Preview selected voice: accent downbeat (+ light upbeat). */
