@@ -6,20 +6,25 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { centsFromTarget, midiToNearestNote } from "@scale-pulse/core";
+import { centsFromTarget } from "@scale-pulse/core";
 import { playSungMidi } from "../audio/pitch";
 import {
   TUNER_TAB_COLUMNS,
   fretLineYPercent,
   centsToColumnShift,
   columnIndexForString,
+  customTuningNotation,
+  defaultOpenMidi,
   defaultStringTargets,
+  isDefaultTuningTarget,
   nutYPercent,
   pitchYOnString,
   readStoredTargets,
   storeTargets,
   tabStringName,
+  targetFrequency,
   targetMidiFromTrackY,
+  tuningPairLabel,
   TunerEngine,
   type StringTargets,
   type TunerReading,
@@ -36,11 +41,6 @@ type Props = {
 
 const MATCH_CENTS = 5;
 const NUT_Y = nutYPercent();
-
-function midiLabel(midi: number): string {
-  const { name, octave } = midiToNearestNote(midi);
-  return `${name}${octave}`;
-}
 
 function formatStringDelta(cents: number): string {
   if (Math.abs(cents) <= MATCH_CENTS) return "✓";
@@ -183,6 +183,8 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
       : undefined;
 
   const freqLabel = reading ? `${reading.freq.toFixed(1)} Hz` : "— Hz";
+  const customNotation =
+    mode === "custom" ? customTuningNotation(customTargets) : null;
 
   const fretMarks = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -237,6 +239,12 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
           </p>
         </div>
 
+        {customNotation ? (
+          <p className="tuner-custom-notation" aria-live="polite">
+            {customNotation}
+          </p>
+        ) : null}
+
         <div className="tuner-neck" aria-label="六线谱">
           <div className="tuner-heads">
             {TUNER_TAB_COLUMNS.map((id) => {
@@ -283,7 +291,9 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
             {TUNER_TAB_COLUMNS.map((id) => {
               const targetMidi = activeTargets[id];
               const active = activeString === id && reading != null;
-              const targetNote = midiLabel(targetMidi);
+              const pairLabel = tuningPairLabel(id, targetMidi);
+              const targetHz = targetFrequency(targetMidi);
+              const factoryOpen = defaultOpenMidi(id);
               const pitchY =
                 reading != null
                   ? pitchYOnString(reading.midi, targetMidi)
@@ -312,6 +322,18 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                       />
                     ))}
                     <span className="tuner-string-wire" aria-hidden="true" />
+                    {mode === "custom" &&
+                    !isDefaultTuningTarget(id, targetMidi) ? (
+                      <span
+                        className="tuner-target-preview"
+                        style={
+                          {
+                            "--pitch-y": `${pitchYOnString(targetMidi, factoryOpen)}%`,
+                          } as CSSProperties
+                        }
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     {reading && pitchY != null ? (
                       <span
                         className={
@@ -326,10 +348,12 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                       type="button"
                       className={
                         "tuner-target-handle" +
-                        (mode === "custom" ? " tuner-target-handle--drag" : "")
+                        (mode === "custom"
+                          ? " tuner-target-handle--drag tuner-target-handle--custom"
+                          : "")
                       }
                       style={{ "--target-y": `${NUT_Y}%` } as CSSProperties}
-                      aria-label={`${tabStringName(id)} 弦目标音 ${targetNote}`}
+                      aria-label={`${pairLabel}，目标 ${targetHz.toFixed(1)} Hz`}
                       onPointerDown={(e) => onTargetPointerDown(id, e)}
                       onPointerMove={(e) => onTargetPointerMove(id, e)}
                       onPointerUp={onTargetPointerUp}
@@ -337,9 +361,18 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                         if (mode !== "custom") playReference(id);
                       }}
                     >
-                      <span className="tuner-target-note" aria-hidden="true">
-                        {mode === "custom" ? targetNote : "♪"}
-                      </span>
+                      {mode === "custom" ? (
+                        <>
+                          <span className="tuner-target-pair">{pairLabel}</span>
+                          <span className="tuner-target-hz">
+                            {targetHz.toFixed(1)} Hz
+                          </span>
+                        </>
+                      ) : (
+                        <span className="tuner-target-note" aria-hidden="true">
+                          ♪
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>
