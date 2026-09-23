@@ -989,18 +989,34 @@ input[type="range"]::-moz-range-thumb {
   flex-shrink: 0;
 }
 
-/* Tuner */
+/* Tuner — vertical strings (tab order, 6 → 1 left to right) */
 .panel--tuner {
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
-.tuner-status {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-  text-align: right;
-  line-height: 1.25;
-  max-width: 10rem;
+.tuner-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.tuner-mode-seg {
+  flex: 1;
+  max-width: 12.5rem;
+}
+
+.tuner-reset-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.35rem 0.5rem;
+  touch-action: manipulation;
 }
 
 .tuner-stage {
@@ -1008,8 +1024,8 @@ input[type="range"]::-moz-range-thumb {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.85rem 0.75rem 0.75rem;
+  position: relative;
+  padding: 0.55rem 0.45rem 0.45rem;
   background: var(--surface);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
@@ -1021,166 +1037,187 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tuner-stage--intune {
-  box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--pale-green-fg) 35%, transparent);
+  box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--pale-green-fg) 38%, transparent);
 }
 
-.tuner-lanes {
+.tuner-neck {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tuner-heads {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.tuner-string-head {
+  text-align: center;
+  font-size: clamp(0.95rem, 3.8vmin, 1.1rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.tuner-string-head--active {
+  color: var(--ink);
+}
+
+.tuner-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.3rem;
+  position: relative;
+}
+
+.tuner-string-col {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.tuner-string-track {
   position: relative;
   flex: 1 1 auto;
-  min-height: 12rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.15rem;
-  padding-left: 3.1rem;
-  padding-right: 0.15rem;
-}
-
-.tuner-lane {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--lane-y, 50%);
-  transform: translateY(-50%);
-  display: grid;
-  grid-template-columns: 3.1rem 1fr;
-  gap: 0;
-  margin-left: -3.1rem;
-  pointer-events: none;
-}
-
-.tuner-lane--active .tuner-lane-track {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-soft));
-}
-
-.tuner-lane--active .tuner-lane-track::before {
-  background: color-mix(in srgb, var(--accent-ink) 55%, var(--ink));
-  height: 2px;
-}
-
-.tuner-lane-label {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.2rem;
-  padding-right: 0.45rem;
-  pointer-events: auto;
-}
-
-.tuner-lane-num {
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--ink-muted);
-}
-
-.tuner-lane-note {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--ink);
-  min-width: 0.85rem;
-  text-align: center;
-}
-
-.tuner-lane-ref {
-  appearance: none;
-  border: none;
-  padding: 0;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--accent-ink);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1;
-  touch-action: manipulation;
-  opacity: 0.85;
-}
-
-.tuner-lane-ref:active {
-  opacity: 1;
-}
-
-.tuner-lane-track {
-  position: relative;
-  height: 1.35rem;
-  border-radius: var(--radius-pill);
-  background: var(--surface-soft);
+  width: 100%;
+  min-height: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--surface-soft));
   box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
 }
 
-.tuner-lane-track::before {
-  content: "";
+.tuner-string-nut {
   position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  top: 50%;
-  height: 1px;
-  margin-top: -0.5px;
+  left: 0.25rem;
+  right: 0.25rem;
+  top: 0.28rem;
+  height: 3px;
+  border-radius: 2px;
   background: color-mix(in srgb, var(--ink) 22%, transparent);
-}
-
-.tuner-lane-center {
-  position: absolute;
-  left: 50%;
-  top: 0.2rem;
-  bottom: 0.2rem;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--ink) 18%, transparent);
   z-index: 1;
 }
 
-.tuner-marker {
+.tuner-string-wire {
   position: absolute;
-  left: calc(3.1rem + (100% - 3.1rem) * var(--marker-x, 50) / 100);
-  top: var(--marker-y, 50%);
-  width: 1rem;
-  height: 1rem;
-  margin: -0.5rem 0 0 -0.5rem;
-  border-radius: 50%;
-  background: var(--ink);
-  box-shadow: var(--shadow-soft);
-  z-index: 3;
-  transition:
-    top 0.07s linear,
-    left 0.07s linear,
-    background var(--duration) ease;
+  left: 50%;
+  top: 0.45rem;
+  bottom: 0.45rem;
+  width: 1.5px;
+  margin-left: -0.75px;
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+  border-radius: 1px;
+  z-index: 0;
 }
 
-.tuner-stage--intune .tuner-marker {
-  background: var(--pale-green-fg);
+.tuner-string-col--active .tuner-string-track {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-soft));
 }
 
-.tuner-readout {
-  flex-shrink: 0;
-  text-align: center;
-  padding-top: 0.15rem;
+.tuner-string-col--active .tuner-string-wire {
+  width: 2px;
+  margin-left: -1px;
+  background: color-mix(in srgb, var(--accent-ink) 55%, var(--ink));
 }
 
-.tuner-readout-note {
-  display: block;
-  font-size: clamp(2rem, 9vmin, 2.65rem);
+.tuner-target-handle {
+  position: absolute;
+  left: 50%;
+  top: var(--target-y, 50%);
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  appearance: none;
+  border: none;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  padding: 0 0.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+  line-height: 1;
+  box-shadow: var(--shadow-soft), inset 0 0 0 1px var(--border);
+  touch-action: manipulation;
+}
+
+.tuner-target-handle--drag {
+  cursor: grab;
+  touch-action: none;
+  min-width: 2.1rem;
+  height: 1.85rem;
   color: var(--ink);
 }
 
-.tuner-readout-meta {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-  min-height: 1.2em;
+.tuner-target-handle--drag:active {
+  cursor: grabbing;
 }
 
-.tuner-hint {
+.tuner-target-note {
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tuner-live-dot {
+  position: absolute;
+  z-index: 4;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 85%, transparent);
+  top: var(--marker-y, 50%);
+  left: calc((var(--marker-col, 0) + 0.5) * (100% / 6));
+  transform: translate(
+    calc(-50% + var(--marker-shift, 0) * (100% / 6) / 100),
+    -50%
+  );
+  transition:
+    top 0.07s linear,
+    transform 0.07s linear,
+    background var(--duration) ease;
+}
+
+.tuner-stage--intune .tuner-live-dot {
+  background: var(--pale-green-fg);
+}
+
+.tuner-float-readout {
+  position: absolute;
+  left: 50%;
+  bottom: 0.55rem;
+  transform: translateX(-50%);
   margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.35;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.tuner-float-note {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.tuner-float-meta {
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--ink-muted);
-  flex-shrink: 0;
 }
 
 .tuner-foot {
@@ -1711,7 +1748,7 @@ input[type="range"]::-moz-range-thumb {
   .switch-track,
   .switch-track::after,
   .hero-card,
-  .tuner-marker {
+  .tuner-live-dot {
     transition: none;
   }
 }
