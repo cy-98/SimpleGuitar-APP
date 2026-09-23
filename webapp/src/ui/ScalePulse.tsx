@@ -49,6 +49,7 @@ import {
   type SoundId,
 } from "../audio/voices";
 import { playSungMidi, playSungNote } from "../audio/pitch";
+import { TunerPanel } from "./TunerPanel";
 
 const MUTE_UPBEATS_KEY = "scale-pulse-mute-upbeats";
 
@@ -74,7 +75,7 @@ function storeMuteUpbeats(value: boolean): void {
   }
 }
 
-type AppTab = "metro" | "theory" | "settings";
+type AppTab = "metro" | "theory" | "tuner" | "settings";
 type TheoryView = "chart" | "fretboard";
 
 const STRING_LABELS = ["e", "B", "G", "D", "A", "E"] as const;
@@ -769,6 +770,8 @@ export default function ScalePulse() {
                 ))}
               </div>
             </section>
+          ) : tab === "tuner" ? (
+            <TunerPanel onNeedAudioUnlock={syncAudioHint} />
           ) : (
             <section className="panel panel--settings" aria-label="设置">
               <div className="settings-card">
@@ -901,6 +904,14 @@ export default function ScalePulse() {
               onClick={() => setTab("theory")}
             >
               <span className="tab-label">级数</span>
+            </button>
+            <button
+              type="button"
+              className="tab"
+              aria-pressed={tab === "tuner"}
+              onClick={() => setTab("tuner")}
+            >
+              <span className="tab-label">调音</span>
             </button>
             <button
               type="button"
