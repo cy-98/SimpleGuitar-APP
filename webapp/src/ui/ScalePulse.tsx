@@ -757,7 +757,11 @@ export default function ScalePulse() {
                   <span className="settings-label" id="sound-label">
                     声源
                   </span>
-                  <div role="listbox" aria-labelledby="sound-label">
+                  <div
+                    className="sound-seg-wrap"
+                    role="listbox"
+                    aria-labelledby="sound-label"
+                  >
                     <SlideSeg
                       className="sound-seg"
                       optionRole="option"
