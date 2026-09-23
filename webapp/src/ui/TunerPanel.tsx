@@ -6,13 +6,13 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { centsFromTarget } from "@scale-pulse/core";
 import { playSungMidi } from "../audio/pitch";
 import {
   TUNER_TAB_COLUMNS,
   centsToColumnShift,
   columnIndexForString,
   customTuningNotation,
+  defaultOpenMidi,
   defaultStringTargets,
   nutYPercent,
   pitchYOnString,
@@ -21,6 +21,7 @@ import {
   tabStringName,
   targetMidiFromTrackY,
   tuningPairLabel,
+  tuningTargetName,
   TunerEngine,
   type StringTargets,
   type TunerReading,
@@ -125,14 +126,25 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
     updateCustomTarget(id, midi);
   }
 
+  function onCustomDragStart(
+    id: TunerStringId,
+    track: HTMLDivElement,
+    pointerId: number,
+    captureEl: HTMLElement,
+    clientY: number,
+  ) {
+    captureEl.setPointerCapture(pointerId);
+    beginCustomDrag(id, track);
+    moveCustomDrag(id, clientY);
+  }
+
   function onTrackPointerDown(
     id: TunerStringId,
     e: ReactPointerEvent<HTMLDivElement>,
   ) {
     if (mode !== "custom") return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    beginCustomDrag(id, e.currentTarget);
-    moveCustomDrag(id, e.clientY);
+    if ((e.target as HTMLElement).closest(".tuner-target-handle")) return;
+    onCustomDragStart(id, e.currentTarget, e.pointerId, e.currentTarget, e.clientY);
   }
 
   function onTrackPointerMove(
@@ -144,6 +156,35 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
   }
 
   function onTrackPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    dragRef.current = null;
+  }
+
+  function onHandlePointerDown(
+    id: TunerStringId,
+    e: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (mode !== "custom") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const track = e.currentTarget.closest(
+      ".tuner-string-track",
+    ) as HTMLDivElement | null;
+    if (!track) return;
+    onCustomDragStart(id, track, e.pointerId, e.currentTarget, e.clientY);
+  }
+
+  function onHandlePointerMove(
+    id: TunerStringId,
+    e: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (mode !== "custom") return;
+    moveCustomDrag(id, e.clientY);
+  }
+
+  function onHandlePointerUp(e: ReactPointerEvent<HTMLButtonElement>) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
@@ -252,6 +293,15 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
               const targetMidi = activeTargets[id];
               const active = activeString === id && reading != null;
               const pairLabel = tuningPairLabel(id, targetMidi);
+              const factoryOpen = defaultOpenMidi(id);
+              const targetY =
+                mode === "custom"
+                  ? pitchYOnString(targetMidi, factoryOpen)
+                  : NUT_Y;
+              const handleLabel =
+                mode === "custom"
+                  ? `${tabStringName(id)}=${tuningTargetName(targetMidi, factoryOpen)}`
+                  : "♪";
               return (
                 <div
                   key={id}
@@ -274,14 +324,23 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                     <span className="tuner-string-wire" aria-hidden="true" />
                     <button
                       type="button"
-                      className="tuner-target-handle"
-                      style={{ "--target-y": `${NUT_Y}%` } as CSSProperties}
-                      aria-label={`${pairLabel}`}
+                      className={
+                        "tuner-target-handle" +
+                        (mode === "custom"
+                          ? " tuner-target-handle--custom"
+                          : " tuner-target-handle--standard")
+                      }
+                      style={{ "--target-y": `${targetY}%` } as CSSProperties}
+                      aria-label={pairLabel}
+                      onPointerDown={(e) => onHandlePointerDown(id, e)}
+                      onPointerMove={(e) => onHandlePointerMove(id, e)}
+                      onPointerUp={onHandlePointerUp}
+                      onPointerCancel={onHandlePointerUp}
                       onClick={() => {
                         if (mode === "standard") playReference(id);
                       }}
                     >
-                      {mode === "custom" ? pairLabel : "♪"}
+                      <span className="tuner-target-handle-text">{handleLabel}</span>
                     </button>
                   </div>
                 </div>
