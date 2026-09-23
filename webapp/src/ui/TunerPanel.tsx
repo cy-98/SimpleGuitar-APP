@@ -28,6 +28,7 @@ import {
   type TunerStringId,
 } from "../audio/tuner";
 import { unlockAudioSync } from "../audio/voices";
+import { SlideSeg } from "./SlideSeg";
 
 type MicState = "pending" | "live" | "denied";
 type TuningMode = "standard" | "custom";
@@ -231,30 +232,18 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
       >
         <div className="tuner-topbar">
           <div className="tuner-topbar-left">
-            <div
-              className="tuner-slide-switch"
-              data-mode={mode}
-              role="group"
+            <SlideSeg
+              className="slide-seg--compact"
               aria-label="调弦模式"
-            >
-              <span className="tuner-slide-thumb" aria-hidden="true" />
-              <button
-                type="button"
-                className="tuner-slide-option"
-                aria-pressed={mode === "standard"}
-                onClick={() => setMode("standard")}
-              >
-                标准
-              </button>
-              <button
-                type="button"
-                className="tuner-slide-option"
-                aria-pressed={mode === "custom"}
-                onClick={() => setMode("custom")}
-              >
-                特殊
-              </button>
-            </div>
+              value={mode}
+              onChange={setMode}
+              options={(
+                [
+                  ["standard", "标准"],
+                  ["custom", "特殊"],
+                ] as const
+              ).map(([value, label]) => ({ value, label }))}
+            />
             {mode === "custom" ? (
               <button type="button" className="tuner-reset-btn" onClick={resetCustom}>
                 重置
