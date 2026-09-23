@@ -32,3 +32,46 @@ export function noteToMidi(note: string, octave = 4): number | null {
 export function midiToFreq(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12);
 }
+
+/** Continuous MIDI from Hz (A4 = 69 @ 440 Hz). */
+export function freqToMidi(freq: number): number | null {
+  if (!Number.isFinite(freq) || freq <= 0) return null;
+  return 69 + 12 * Math.log2(freq / 440);
+}
+
+const SHARP_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+] as const;
+
+/** Nearest spelled note + cents offset (−50…+50 before wrap). */
+export function midiToNearestNote(midi: number): {
+  name: string;
+  octave: number;
+  cents: number;
+  midiRounded: number;
+} {
+  const midiRounded = Math.round(midi);
+  const cents = (midi - midiRounded) * 100;
+  const pc = ((midiRounded % 12) + 12) % 12;
+  const octave = Math.floor(midiRounded / 12) - 1;
+  return { name: SHARP_NAMES[pc]!, octave, cents, midiRounded };
+}
+
+/** Cents from a target MIDI pitch (e.g. open string). */
+export function centsFromTarget(midi: number, targetMidi: number): number {
+  return (midi - targetMidi) * 100;
+}
+
+/** Standard guitar open strings, thick → thin (6 → 1). */
+export const GUITAR_OPEN_MIDI = [40, 45, 50, 55, 59, 64] as const;
