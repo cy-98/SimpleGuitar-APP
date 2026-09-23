@@ -5,12 +5,15 @@
 ```
 scale-pulse/
 ├── APP.md             # 产品说明
+├── docs/plans/        # 待做功能计划（capo / tap tempo / 节奏练习）
 ├── packages/core/     # Web 共享 theory / pitch（TypeScript）
 ├── webapp/            # Web 应用
 ├── ios/               # SwiftUI（需 Mac + Xcode）
 ├── design-system/
 └── package.json
 ```
+
+功能路线图：[docs/plans/README.md](./docs/plans/README.md)
 
 ---
 
