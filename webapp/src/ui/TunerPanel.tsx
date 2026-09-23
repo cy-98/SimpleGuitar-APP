@@ -167,32 +167,10 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
         } as CSSProperties)
       : undefined;
 
+  const freqLabel = reading ? `${reading.freq.toFixed(1)} Hz` : "— Hz";
+
   return (
     <section className="panel panel--tuner" aria-label="调音器">
-      <div className="tuner-mode-bar">
-        <div className="seg tuner-mode-seg" role="group" aria-label="调弦模式">
-          <button
-            type="button"
-            aria-pressed={mode === "standard"}
-            onClick={() => setMode("standard")}
-          >
-            标准
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === "custom"}
-            onClick={() => setMode("custom")}
-          >
-            特殊
-          </button>
-        </div>
-        {mode === "custom" ? (
-          <button type="button" className="tuner-reset-btn" onClick={resetCustom}>
-            重置
-          </button>
-        ) : null}
-      </div>
-
       <div
         className={
           "tuner-stage" +
@@ -200,6 +178,48 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
           (reading?.inTune ? " tuner-stage--intune" : "")
         }
       >
+        <div className="tuner-topbar">
+          <div className="tuner-topbar-left">
+            <div
+              className="tuner-slide-switch"
+              data-mode={mode}
+              role="group"
+              aria-label="调弦模式"
+            >
+              <span className="tuner-slide-thumb" aria-hidden="true" />
+              <button
+                type="button"
+                className="tuner-slide-option"
+                aria-pressed={mode === "standard"}
+                onClick={() => setMode("standard")}
+              >
+                标准
+              </button>
+              <button
+                type="button"
+                className="tuner-slide-option"
+                aria-pressed={mode === "custom"}
+                onClick={() => setMode("custom")}
+              >
+                特殊
+              </button>
+            </div>
+            {mode === "custom" ? (
+              <button type="button" className="tuner-reset-btn" onClick={resetCustom}>
+                重置
+              </button>
+            ) : null}
+          </div>
+          <p
+            className={
+              "tuner-freq-readout" + (reading ? " tuner-freq-readout--live" : "")
+            }
+            aria-live="polite"
+          >
+            {freqLabel}
+          </p>
+        </div>
+
         <div className="tuner-neck" aria-label="六线谱">
           <div className="tuner-heads">
             {TUNER_TAB_COLUMNS.map((id) => (
