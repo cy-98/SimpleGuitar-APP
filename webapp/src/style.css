@@ -1107,6 +1107,17 @@ input[type="range"]::-moz-range-thumb {
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-soft));
 }
 
+.tuner-custom-notation {
+  margin: 0 0 0.35rem;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  color: var(--accent-ink);
+  text-align: center;
+}
+
 .tuner-stage--live {
   box-shadow: var(--shadow-card), 0 0 0 1.5px var(--accent-soft);
 }
@@ -1297,9 +1308,49 @@ input[type="range"]::-moz-range-thumb {
 .tuner-target-handle--drag {
   cursor: grab;
   touch-action: none;
-  min-width: 2.1rem;
-  height: 1.85rem;
   color: var(--ink);
+}
+
+.tuner-target-handle--custom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  min-width: 2.65rem;
+  height: auto;
+  min-height: 2rem;
+  padding: 0.2rem 0.25rem;
+}
+
+.tuner-target-pair {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.tuner-target-hz {
+  font-size: 0.52rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.tuner-target-preview {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  top: var(--pitch-y, 50%);
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .tuner-target-handle--drag:active {

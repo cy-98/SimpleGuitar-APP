@@ -4,6 +4,7 @@ import {
   centsFromTarget,
   freqToMidi,
   GUITAR_OPEN_MIDI,
+  midiToFreq,
   midiToNearestNote,
 } from "@scale-pulse/core";
 import { resumeAudio } from "./voices";
@@ -137,20 +138,75 @@ export function fretLineYPercent(fret: number): number {
   return TUNER_NUT_Y_PERCENT + (f / TUNER_VISIBLE_FRETS) * travel;
 }
 
-/** Map pointer Y on track → default open + frets toward body. */
+/** Per-string drag range (semitones from factory open). */
+export const TUNING_SEMITONE_MIN = -6;
+export const TUNING_SEMITONE_MAX = 12;
+
+/** Map pointer Y → target MIDI (nut = factory open; down = sharp, up = flat). */
 export function targetMidiFromTrackY(
   id: TunerStringId,
   yPercentFromTop: number,
 ): number {
-  const nutBand = TUNER_NUT_Y_PERCENT + 4;
-  if (yPercentFromTop <= nutBand) {
-    return defaultOpenMidi(id);
+  const y = Math.max(0, Math.min(100, yPercentFromTop));
+  const nut = TUNER_NUT_Y_PERCENT;
+  let semitones = 0;
+  if (y <= nut) {
+    const upTravel = Math.max(1, nut);
+    const up = (nut - y) / upTravel;
+    semitones = -Math.round(up * Math.abs(TUNING_SEMITONE_MIN));
+  } else {
+    const downTravel = FRET_BODY_Y_PERCENT - nut;
+    const down = (y - nut) / downTravel;
+    semitones = Math.round(down * TUNING_SEMITONE_MAX);
   }
-  const travel = FRET_BODY_Y_PERCENT - TUNER_NUT_Y_PERCENT;
-  const frets =
-    ((yPercentFromTop - TUNER_NUT_Y_PERCENT) / travel) * TUNER_VISIBLE_FRETS;
-  const rounded = Math.round(Math.max(0, Math.min(TUNER_VISIBLE_FRETS, frets)));
-  return defaultOpenMidi(id) + rounded;
+  semitones = Math.max(
+    TUNING_SEMITONE_MIN,
+    Math.min(TUNING_SEMITONE_MAX, semitones),
+  );
+  const midi = defaultOpenMidi(id) + semitones;
+  return Math.max(TUNER_MIDI_MIN, Math.min(TUNER_MIDI_MAX, midi));
+}
+
+/** Target note name for E=B notation (octave if not same as open). */
+export function tuningTargetName(
+  targetMidi: number,
+  referenceMidi: number,
+): string {
+  const { name, octave } = midiToNearestNote(targetMidi);
+  const refOct = midiToNearestNote(referenceMidi).octave;
+  if (octave !== refOct) return `${name}${octave}`;
+  return name;
+}
+
+/** Standard shorthand: E=B (string name = target pitch). */
+export function tuningPairLabel(
+  id: TunerStringId,
+  targetMidi: number,
+): string {
+  const open = tabStringName(id);
+  const ref = defaultOpenMidi(id);
+  const target = tuningTargetName(targetMidi, ref);
+  return `${open}=${target}`;
+}
+
+export function isDefaultTuningTarget(
+  id: TunerStringId,
+  targetMidi: number,
+): boolean {
+  return targetMidi === defaultOpenMidi(id);
+}
+
+export function targetFrequency(targetMidi: number): number {
+  return midiToFreq(targetMidi);
+}
+
+/** Left → right, 6 弦 … 1 弦; only strings that differ from factory. */
+export function customTuningNotation(targets: StringTargets): string {
+  const parts = TUNER_TAB_COLUMNS.flatMap((id) => {
+    if (isDefaultTuningTarget(id, targets[id])) return [];
+    return [tuningPairLabel(id, targets[id])];
+  });
+  return parts.length > 0 ? parts.join(" ") : "各弦标准空弦";
 }
 
 /** Horizontal nudge within a column (−50…+50 cents → roughly ±42%). */
