@@ -139,7 +139,6 @@ export class TunerEngine {
   private analyser: AnalyserNode | null = null;
   private buffer: Float32Array | null = null;
   private raf = 0;
-  private listener: TunerListener | null = null;
   private pinnedString: TunerStringId | null = null;
   private smoothMidi: number | null = null;
 
@@ -202,7 +201,6 @@ export class TunerEngine {
 
   private emit(reading: TunerReading | null): void {
     this.onReading?.(reading);
-    this.listener?.(reading);
   }
 
   private sample(): void {
