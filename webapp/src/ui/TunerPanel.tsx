@@ -10,15 +10,16 @@ import { centsFromTarget, midiToNearestNote } from "@scale-pulse/core";
 import { playSungMidi } from "../audio/pitch";
 import {
   TUNER_TAB_COLUMNS,
+  fretLineYPercent,
   centsToColumnShift,
   columnIndexForString,
   defaultStringTargets,
-  lanePercentForTarget,
-  midiToLanePercent,
-  percentToMidi,
+  nutYPercent,
+  pitchYOnString,
   readStoredTargets,
   storeTargets,
   tabStringName,
+  targetMidiFromTrackY,
   TunerEngine,
   type StringTargets,
   type TunerReading,
@@ -34,6 +35,7 @@ type Props = {
 };
 
 const MATCH_CENTS = 5;
+const NUT_Y = nutYPercent();
 
 function midiLabel(midi: number): string {
   const { name, octave } = midiToNearestNote(midi);
@@ -49,6 +51,11 @@ function formatStringDelta(cents: number): string {
 function deltaTone(cents: number): "match" | "flat" | "sharp" | "idle" {
   if (Math.abs(cents) <= MATCH_CENTS) return "match";
   return cents < 0 ? "flat" : "sharp";
+}
+
+function trackYPercent(track: HTMLDivElement, clientY: number): number {
+  const rect = track.getBoundingClientRect();
+  return ((clientY - rect.top) / rect.height) * 100;
 }
 
 export function TunerPanel({ onNeedAudioUnlock }: Props) {
@@ -123,12 +130,6 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
     });
   }
 
-  function yFromPointer(track: HTMLDivElement, clientY: number): number {
-    const rect = track.getBoundingClientRect();
-    const t = (clientY - rect.top) / rect.height;
-    return percentToMidi(t * 100);
-  }
-
   function onTargetPointerDown(
     id: TunerStringId,
     e: ReactPointerEvent<HTMLButtonElement>,
@@ -148,7 +149,8 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
   ) {
     const drag = dragRef.current;
     if (!drag || drag.stringId !== id) return;
-    const midi = Math.round(yFromPointer(drag.trackEl, e.clientY));
+    const y = trackYPercent(drag.trackEl, e.clientY);
+    const midi = targetMidiFromTrackY(id, y);
     updateCustomTarget(id, midi);
   }
 
@@ -175,12 +177,14 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
     reading != null
       ? ({
           "--marker-col": columnIndexForString(reading.stringId),
-          "--marker-y": `${midiToLanePercent(reading.midi)}%`,
+          "--marker-y": `${pitchYOnString(reading.midi, activeTargets[reading.stringId])}%`,
           "--marker-shift": `${centsToColumnShift(reading.cents)}%`,
         } as CSSProperties)
       : undefined;
 
   const freqLabel = reading ? `${reading.freq.toFixed(1)} Hz` : "— Hz";
+
+  const fretMarks = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
     <section className="panel panel--tuner" aria-label="调音器">
@@ -278,9 +282,12 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
           <div className="tuner-board">
             {TUNER_TAB_COLUMNS.map((id) => {
               const targetMidi = activeTargets[id];
-              const targetY = lanePercentForTarget(targetMidi);
               const active = activeString === id && reading != null;
               const targetNote = midiLabel(targetMidi);
+              const pitchY =
+                reading != null
+                  ? pitchYOnString(reading.midi, targetMidi)
+                  : null;
               return (
                 <div
                   key={id}
@@ -289,20 +296,29 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                     (active ? " tuner-string-col--active" : "")
                   }
                 >
-                  <div className="tuner-string-track">
+                  <div
+                    className="tuner-string-track"
+                    style={{ "--nut-y": `${NUT_Y}%` } as CSSProperties}
+                  >
                     <span className="tuner-string-nut" aria-hidden="true" />
+                    {fretMarks.map((fret) => (
+                      <span
+                        key={fret}
+                        className="tuner-fret-line"
+                        style={
+                          { "--fret-y": `${fretLineYPercent(fret)}%` } as CSSProperties
+                        }
+                        aria-hidden="true"
+                      />
+                    ))}
                     <span className="tuner-string-wire" aria-hidden="true" />
-                    {reading ? (
+                    {reading && pitchY != null ? (
                       <span
                         className={
                           "tuner-pitch-ghost" +
                           (active ? " tuner-pitch-ghost--active" : "")
                         }
-                        style={
-                          {
-                            "--pitch-y": `${midiToLanePercent(reading.midi)}%`,
-                          } as CSSProperties
-                        }
+                        style={{ "--pitch-y": `${pitchY}%` } as CSSProperties}
                         aria-hidden="true"
                       />
                     ) : null}
@@ -312,7 +328,7 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                         "tuner-target-handle" +
                         (mode === "custom" ? " tuner-target-handle--drag" : "")
                       }
-                      style={{ "--target-y": `${targetY}%` } as CSSProperties}
+                      style={{ "--target-y": `${NUT_Y}%` } as CSSProperties}
                       aria-label={`${tabStringName(id)} 弦目标音 ${targetNote}`}
                       onPointerDown={(e) => onTargetPointerDown(id, e)}
                       onPointerMove={(e) => onTargetPointerMove(id, e)}
