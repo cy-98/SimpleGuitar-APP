@@ -18,6 +18,7 @@ import {
   type FretDot,
   type PositionId,
 } from "../theory/fretboard";
+import { SlideSeg } from "./SlideSeg";
 import {
   MetronomeEngine,
   type Subdivision,
@@ -464,40 +465,31 @@ export default function ScalePulse() {
 
                 <div className="field">
                   <span id="meter-label">拍号</span>
-                  <div className="seg" role="group" aria-labelledby="meter-label">
-                    {([2, 3, 4] as const).map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        aria-pressed={beatsPerBar === n}
-                        onClick={() => setBeatsPerBar(n)}
-                      >
-                        {n}/4
-                      </button>
-                    ))}
-                  </div>
+                  <SlideSeg
+                    aria-labelledby="meter-label"
+                    value={beatsPerBar}
+                    onChange={setBeatsPerBar}
+                    options={([2, 3, 4] as const).map((n) => ({
+                      value: n,
+                      label: `${n}/4`,
+                    }))}
+                  />
                 </div>
 
                 <div className="field">
                   <span id="subdiv-label">细分</span>
-                  <div className="seg" role="group" aria-labelledby="subdiv-label">
-                    {(
+                  <SlideSeg
+                    aria-labelledby="subdiv-label"
+                    value={subdivision}
+                    onChange={setSubdivision}
+                    options={(
                       [
                         [1, "四分"],
                         [2, "八分"],
                         [4, "十六分"],
                       ] as const
-                    ).map(([n, label]) => (
-                      <button
-                        key={n}
-                        type="button"
-                        aria-pressed={subdivision === n}
-                        onClick={() => setSubdivision(n)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                    ).map(([n, label]) => ({ value: n, label }))}
+                  />
                 </div>
               </div>
             </section>
@@ -730,45 +722,31 @@ export default function ScalePulse() {
               </div>
 
               {theoryView === "fretboard" ? (
-                <div
-                  className="seg position-seg"
-                  role="group"
+                <SlideSeg
+                  className="position-seg"
                   aria-label="把位"
-                >
-                  {POSITIONS.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      aria-pressed={positionId === p.id}
-                      onClick={() => setPositionId(p.id)}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
+                  value={positionId}
+                  onChange={setPositionId}
+                  columns={6}
+                  options={POSITIONS.map((p) => ({
+                    value: p.id,
+                    label: p.label,
+                  }))}
+                />
               ) : null}
 
-              <div
-                className="seg theory-view-seg"
-                role="group"
+              <SlideSeg
+                className="theory-view-seg"
                 aria-label="级数视图"
-              >
-                {(
+                value={theoryView}
+                onChange={setTheoryView}
+                options={(
                   [
                     ["chart", "环图"],
                     ["fretboard", "指板"],
                   ] as const
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={theoryView === id}
-                    onClick={() => setTheoryView(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+                ).map(([id, label]) => ({ value: id, label }))}
+              />
             </section>
           ) : tab === "tuner" ? (
             <TunerPanel onNeedAudioUnlock={syncAudioHint} />
@@ -779,23 +757,18 @@ export default function ScalePulse() {
                   <span className="settings-label" id="sound-label">
                     声源
                   </span>
-                  <div
-                    className="seg sound-seg"
-                    role="listbox"
-                    aria-labelledby="sound-label"
-                  >
-                    {SOUNDS.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="option"
-                        aria-selected={sound === s.id}
-                        aria-pressed={sound === s.id}
-                        onClick={() => changeSound(s.id)}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
+                  <div role="listbox" aria-labelledby="sound-label">
+                    <SlideSeg
+                      className="sound-seg"
+                      optionRole="option"
+                      value={sound}
+                      onChange={changeSound}
+                      columns={2}
+                      options={SOUNDS.map((s) => ({
+                        value: s.id,
+                        label: s.label,
+                      }))}
+                    />
                   </div>
                 </div>
                 <div className="settings-row settings-row--volume">
@@ -888,40 +861,21 @@ export default function ScalePulse() {
         ) : null}
 
         <nav className="tabbar-dock" aria-label="主导航">
-          <div className="tabbar">
-            <button
-              type="button"
-              className="tab"
-              aria-pressed={tab === "metro"}
-              onClick={() => setTab("metro")}
-            >
-              <span className="tab-label">节拍</span>
-            </button>
-            <button
-              type="button"
-              className="tab"
-              aria-pressed={tab === "theory"}
-              onClick={() => setTab("theory")}
-            >
-              <span className="tab-label">级数</span>
-            </button>
-            <button
-              type="button"
-              className="tab"
-              aria-pressed={tab === "tuner"}
-              onClick={() => setTab("tuner")}
-            >
-              <span className="tab-label">调音</span>
-            </button>
-            <button
-              type="button"
-              className="tab"
-              aria-pressed={tab === "settings"}
-              onClick={() => setTab("settings")}
-            >
-              <span className="tab-label">设置</span>
-            </button>
-          </div>
+          <SlideSeg
+            className="slide-seg--tabbar"
+            aria-label="主导航"
+            value={tab}
+            onChange={setTab}
+            columns={4}
+            options={(
+              [
+                ["metro", "节拍"],
+                ["theory", "级数"],
+                ["tuner", "调音"],
+                ["settings", "设置"],
+              ] as const
+            ).map(([value, label]) => ({ value, label }))}
+          />
         </nav>
       </div>
     </div>
