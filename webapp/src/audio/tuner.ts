@@ -15,20 +15,27 @@ export type TunerReading = {
   midi: number;
   note: string;
   octave: number;
-  /** Cents vs selected string or nearest semitone. */
+  /** Cents vs nearest open string. */
   cents: number;
-  stringId: TunerStringId | null;
+  stringId: TunerStringId;
   inTune: boolean;
   level: number;
 };
 
 export type TunerListener = (reading: TunerReading | null) => void;
 
+/** High → low (1 弦 … 6 弦), matches vertical pitch on screen. */
+export const TUNER_LANE_ORDER: readonly TunerStringId[] = [1, 2, 3, 4, 5, 6];
+
 const YIN_THRESHOLD = 0.12;
 const MIN_FREQ = 65;
 const MAX_FREQ = 520;
 const IN_TUNE_CENTS = 5;
 const RMS_GATE = 0.008;
+
+/** Display range: a little below 6 弦 and above 1 弦. */
+export const TUNER_MIDI_MIN = GUITAR_OPEN_MIDI[0]! - 4;
+export const TUNER_MIDI_MAX = GUITAR_OPEN_MIDI[5]! + 4;
 
 const STRING_LABELS: Record<TunerStringId, string> = {
   6: "E",
@@ -45,6 +52,23 @@ export function stringLabel(id: TunerStringId): string {
 
 export function stringTargetMidi(id: TunerStringId): number {
   return GUITAR_OPEN_MIDI[6 - id];
+}
+
+/** 0% = top (high pitch), 100% = bottom. */
+export function midiToLanePercent(midi: number): number {
+  const span = TUNER_MIDI_MAX - TUNER_MIDI_MIN;
+  const t = (TUNER_MIDI_MAX - midi) / span;
+  return Math.max(0, Math.min(100, t * 100));
+}
+
+export function lanePercentForString(id: TunerStringId): number {
+  return midiToLanePercent(stringTargetMidi(id));
+}
+
+/** Map ±50 cents to horizontal 8%…92% within the lane band. */
+export function centsToCrossPercent(cents: number): number {
+  const c = Math.max(-50, Math.min(50, cents));
+  return 8 + ((c + 50) / 100) * 84;
 }
 
 function rms(buffer: Float32Array): number {
@@ -139,21 +163,12 @@ export class TunerEngine {
   private analyser: AnalyserNode | null = null;
   private buffer: Float32Array | null = null;
   private raf = 0;
-  private pinnedString: TunerStringId | null = null;
   private smoothMidi: number | null = null;
 
   onReading: TunerListener | null = null;
 
   get isListening(): boolean {
     return this.raf !== 0;
-  }
-
-  setPinnedString(id: TunerStringId | null): void {
-    this.pinnedString = id;
-  }
-
-  getPinnedString(): TunerStringId | null {
-    return this.pinnedString;
   }
 
   async start(): Promise<void> {
@@ -233,11 +248,9 @@ export class TunerEngine {
 
     const midi = this.smoothMidi;
     const nearest = midiToNearestNote(midi);
-    const stringId = this.pinnedString ?? nearestString(midi);
+    const stringId = nearestString(midi);
     const targetMidi = stringTargetMidi(stringId);
-    const cents = this.pinnedString
-      ? centsFromTarget(midi, targetMidi)
-      : nearest.cents;
+    const cents = centsFromTarget(midi, targetMidi);
 
     const reading: TunerReading = {
       freq,
