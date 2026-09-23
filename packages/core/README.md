@@ -9,3 +9,7 @@ Shared music-theory helpers for Scale Pulse (Web + Mobile).
 ```ts
 import { majorScaleDegrees, scaleDots, noteToMidi } from "@scale-pulse/core";
 ```
+
+```bash
+npm test   # vitest — pitch / scales / fretboard
+```

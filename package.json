@@ -11,6 +11,7 @@
     "build:web": "npm run build --prefix webapp",
     "start:web": "npm run start --prefix webapp",
     "build:pages": "npm run build:pages --prefix webapp",
-    "dev:pages": "npm run dev:pages --prefix webapp"
+    "dev:pages": "npm run dev:pages --prefix webapp",
+    "test": "npm run test --prefix packages/core"
   }
 }
