@@ -10,12 +10,13 @@ import { resumeAudio } from "./voices";
 
 export type TunerStringId = 1 | 2 | 3 | 4 | 5 | 6;
 
+export type StringTargets = Record<TunerStringId, number>;
+
 export type TunerReading = {
   freq: number;
   midi: number;
   note: string;
   octave: number;
-  /** Cents vs nearest open string. */
   cents: number;
   stringId: TunerStringId;
   inTune: boolean;
@@ -24,8 +25,18 @@ export type TunerReading = {
 
 export type TunerListener = (reading: TunerReading | null) => void;
 
-/** High → low (1 弦 … 6 弦), matches vertical pitch on screen. */
-export const TUNER_LANE_ORDER: readonly TunerStringId[] = [1, 2, 3, 4, 5, 6];
+/** Tab staff top → bottom; columns left → right = 6 弦 … 1 弦. */
+export const TUNER_TAB_COLUMNS: readonly TunerStringId[] = [6, 5, 4, 3, 2, 1];
+
+/** Tab notation string names (1 弦 = lowercase e). */
+export const TAB_STRING_NAMES: Record<TunerStringId, string> = {
+  6: "E",
+  5: "A",
+  4: "D",
+  3: "G",
+  2: "B",
+  1: "e",
+};
 
 const YIN_THRESHOLD = 0.12;
 const MIN_FREQ = 65;
@@ -33,25 +44,56 @@ const MAX_FREQ = 520;
 const IN_TUNE_CENTS = 5;
 const RMS_GATE = 0.008;
 
-/** Display range: a little below 6 弦 and above 1 弦. */
-export const TUNER_MIDI_MIN = GUITAR_OPEN_MIDI[0]! - 4;
-export const TUNER_MIDI_MAX = GUITAR_OPEN_MIDI[5]! + 4;
+export const TUNER_MIDI_MIN = GUITAR_OPEN_MIDI[0]! - 6;
+export const TUNER_MIDI_MAX = GUITAR_OPEN_MIDI[5]! + 6;
 
-const STRING_LABELS: Record<TunerStringId, string> = {
-  6: "E",
-  5: "A",
-  4: "D",
-  3: "G",
-  2: "B",
-  1: "E",
-};
+const STORAGE_KEY = "scale-pulse-custom-tuning";
 
-export function stringLabel(id: TunerStringId): string {
-  return STRING_LABELS[id];
+export function defaultStringTargets(): StringTargets {
+  return {
+    6: GUITAR_OPEN_MIDI[0]!,
+    5: GUITAR_OPEN_MIDI[1]!,
+    4: GUITAR_OPEN_MIDI[2]!,
+    3: GUITAR_OPEN_MIDI[3]!,
+    2: GUITAR_OPEN_MIDI[4]!,
+    1: GUITAR_OPEN_MIDI[5]!,
+  };
 }
 
-export function stringTargetMidi(id: TunerStringId): number {
-  return GUITAR_OPEN_MIDI[6 - id];
+export function readStoredTargets(): StringTargets {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultStringTargets();
+    const parsed = JSON.parse(raw) as Partial<Record<string, number>>;
+    const base = defaultStringTargets();
+    for (const id of TUNER_TAB_COLUMNS) {
+      const v = parsed[String(id)];
+      if (typeof v === "number" && Number.isFinite(v)) {
+        base[id] = Math.round(
+          Math.max(TUNER_MIDI_MIN, Math.min(TUNER_MIDI_MAX, v)),
+        );
+      }
+    }
+    return base;
+  } catch {
+    return defaultStringTargets();
+  }
+}
+
+export function storeTargets(targets: StringTargets): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(targets));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function tabStringName(id: TunerStringId): string {
+  return TAB_STRING_NAMES[id];
+}
+
+export function columnIndexForString(id: TunerStringId): number {
+  return TUNER_TAB_COLUMNS.indexOf(id);
 }
 
 /** 0% = top (high pitch), 100% = bottom. */
@@ -61,14 +103,19 @@ export function midiToLanePercent(midi: number): number {
   return Math.max(0, Math.min(100, t * 100));
 }
 
-export function lanePercentForString(id: TunerStringId): number {
-  return midiToLanePercent(stringTargetMidi(id));
+export function lanePercentForTarget(midi: number): number {
+  return midiToLanePercent(midi);
 }
 
-/** Map ±50 cents to horizontal 8%…92% within the lane band. */
-export function centsToCrossPercent(cents: number): number {
+export function percentToMidi(percent: number): number {
+  const t = Math.max(0, Math.min(100, percent)) / 100;
+  return TUNER_MIDI_MAX - t * (TUNER_MIDI_MAX - TUNER_MIDI_MIN);
+}
+
+/** Horizontal nudge within a column (−50…+50 cents → roughly ±42%). */
+export function centsToColumnShift(cents: number): number {
   const c = Math.max(-50, Math.min(50, cents));
-  return 8 + ((c + 50) / 100) * 84;
+  return (c / 50) * 42;
 }
 
 function rms(buffer: Float32Array): number {
@@ -80,7 +127,6 @@ function rms(buffer: Float32Array): number {
   return Math.sqrt(sum / buffer.length);
 }
 
-/** YIN pitch estimate; returns Hz or null. */
 function yinPitch(
   buffer: Float32Array,
   sampleRate: number,
@@ -142,13 +188,11 @@ function yinPitch(
   return freq;
 }
 
-function nearestString(midi: number): TunerStringId {
+function nearestString(midi: number, targets: StringTargets): TunerStringId {
   let best: TunerStringId = 6;
   let bestDist = Infinity;
-  for (let s = 6; s >= 1; s--) {
-    const id = s as TunerStringId;
-    const target = stringTargetMidi(id);
-    const dist = Math.abs(midi - target);
+  for (const id of TUNER_TAB_COLUMNS) {
+    const dist = Math.abs(midi - targets[id]);
     if (dist < bestDist) {
       bestDist = dist;
       best = id;
@@ -164,11 +208,16 @@ export class TunerEngine {
   private buffer: Float32Array | null = null;
   private raf = 0;
   private smoothMidi: number | null = null;
+  private targets: StringTargets = defaultStringTargets();
 
   onReading: TunerListener | null = null;
 
   get isListening(): boolean {
     return this.raf !== 0;
+  }
+
+  setTargets(targets: StringTargets): void {
+    this.targets = { ...targets };
   }
 
   async start(): Promise<void> {
@@ -248,8 +297,8 @@ export class TunerEngine {
 
     const midi = this.smoothMidi;
     const nearest = midiToNearestNote(midi);
-    const stringId = nearestString(midi);
-    const targetMidi = stringTargetMidi(stringId);
+    const stringId = nearestString(midi, this.targets);
+    const targetMidi = this.targets[stringId];
     const cents = centsFromTarget(midi, targetMidi);
 
     const reading: TunerReading = {
