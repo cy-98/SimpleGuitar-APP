@@ -128,7 +128,7 @@ export default function ScalePulse() {
   const [tick, setTick] = useState<TickInfo | null>(null);
 
   const [key, setKey] = useState<MajorKey>("C");
-  const [showSolfege, setShowSolfege] = useState(false);
+  const [showNoteLetters, setShowNoteLetters] = useState(true);
   const [theoryView, setTheoryView] = useState<TheoryView>("chart");
   const [positionId, setPositionId] = useState<PositionId>("all");
   const [theme, setTheme] = useState<ThemeId>(() =>
@@ -506,13 +506,13 @@ export default function ScalePulse() {
               <div className="tile-head">
                 <h2 className="tile-title">{key} 大调</h2>
                 <label className="tile-action">
-                  <span id="solfege-label">唱名</span>
+                  <span id="note-letters-label">字母</span>
                   <span className="switch">
                     <input
                       type="checkbox"
-                      checked={showSolfege}
-                      onChange={(e) => setShowSolfege(e.target.checked)}
-                      aria-labelledby="solfege-label"
+                      checked={showNoteLetters}
+                      onChange={(e) => setShowNoteLetters(e.target.checked)}
+                      aria-labelledby="note-letters-label"
                     />
                     <span className="switch-track" aria-hidden="true" />
                   </span>
@@ -581,24 +581,24 @@ export default function ScalePulse() {
                               pointerEvents="none"
                             >
                               <g className="note-chart-glyph-keep">
-                                <text
-                                  className="note-chart-note"
-                                  textAnchor="middle"
-                                  dominantBaseline="central"
-                                  y={s.degree ? "-5" : "0"}
-                                >
-                                  {spelled}
-                                </text>
+                                {showNoteLetters ? (
+                                  <text
+                                    className="note-chart-note"
+                                    textAnchor="middle"
+                                    dominantBaseline="central"
+                                    y={s.degree ? "-5" : "0"}
+                                  >
+                                    {spelled}
+                                  </text>
+                                ) : null}
                                 {s.degree ? (
                                   <text
                                     className="note-chart-deg"
                                     textAnchor="middle"
-                                    dominantBaseline="hanging"
-                                    y="6"
+                                    dominantBaseline="central"
+                                    y={showNoteLetters ? "6" : "0"}
                                   >
-                                    {showSolfege
-                                      ? `${s.degree.degree} · ${s.degree.solfege}`
-                                      : String(s.degree.degree)}
+                                    {String(s.degree.degree)}
                                   </text>
                                 ) : null}
                               </g>
@@ -688,14 +688,14 @@ export default function ScalePulse() {
                                             : "") +
                                           (dim ? " fretboard-dot--dim" : "")
                                         }
-                                        aria-label={`${dot.degree.note} ${dot.degree.solfege}，第 ${fret} 品`}
+                                        aria-label={`${dot.degree.note} ${dot.degree.degree} 级，第 ${fret} 品`}
                                         onMouseDown={(e) => e.preventDefault()}
                                         onClick={() => selectFretDot(dot)}
                                       >
                                         <span className="fretboard-dot-note">
-                                          {showSolfege
-                                            ? dot.degree.solfege
-                                            : dot.degree.note}
+                                          {showNoteLetters
+                                            ? dot.degree.note
+                                            : String(dot.degree.degree)}
                                         </span>
                                       </button>
                                     ) : null}
