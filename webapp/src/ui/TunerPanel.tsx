@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { midiToNearestNote } from "@scale-pulse/core";
+import { centsFromTarget, midiToNearestNote } from "@scale-pulse/core";
 import { playSungMidi } from "../audio/pitch";
 import {
   TUNER_TAB_COLUMNS,
@@ -33,9 +33,22 @@ type Props = {
   onNeedAudioUnlock?: () => void;
 };
 
+const MATCH_CENTS = 5;
+
 function midiLabel(midi: number): string {
   const { name, octave } = midiToNearestNote(midi);
   return `${name}${octave}`;
+}
+
+function formatStringDelta(cents: number): string {
+  if (Math.abs(cents) <= MATCH_CENTS) return "✓";
+  const n = Math.round(cents);
+  return `${n >= 0 ? "+" : ""}${n}¢`;
+}
+
+function deltaTone(cents: number): "match" | "flat" | "sharp" | "idle" {
+  if (Math.abs(cents) <= MATCH_CENTS) return "match";
+  return cents < 0 ? "flat" : "sharp";
 }
 
 export function TunerPanel({ onNeedAudioUnlock }: Props) {
@@ -222,19 +235,44 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
 
         <div className="tuner-neck" aria-label="六线谱">
           <div className="tuner-heads">
-            {TUNER_TAB_COLUMNS.map((id) => (
-              <span
-                key={id}
-                className={
-                  "tuner-string-head" +
-                  (activeString === id && reading != null
-                    ? " tuner-string-head--active"
-                    : "")
-                }
-              >
-                {tabStringName(id)}
-              </span>
-            ))}
+            {TUNER_TAB_COLUMNS.map((id) => {
+              const relCents =
+                reading != null
+                  ? centsFromTarget(reading.midi, activeTargets[id])
+                  : null;
+              const tone =
+                relCents != null ? deltaTone(relCents) : ("idle" as const);
+              return (
+                <div
+                  key={id}
+                  className="tuner-head-cell"
+                  aria-label={
+                    relCents != null
+                      ? `${tabStringName(id)} 弦相对当前音 ${formatStringDelta(relCents)}`
+                      : undefined
+                  }
+                >
+                  <span
+                    className={
+                      "tuner-string-head" +
+                      (activeString === id && reading != null
+                        ? " tuner-string-head--active"
+                        : "")
+                    }
+                  >
+                    {tabStringName(id)}
+                  </span>
+                  <span
+                    className={
+                      "tuner-string-delta tuner-string-delta--" + tone
+                    }
+                    aria-hidden={relCents == null}
+                  >
+                    {relCents != null ? formatStringDelta(relCents) : "—"}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="tuner-board">
@@ -254,6 +292,20 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
                   <div className="tuner-string-track">
                     <span className="tuner-string-nut" aria-hidden="true" />
                     <span className="tuner-string-wire" aria-hidden="true" />
+                    {reading ? (
+                      <span
+                        className={
+                          "tuner-pitch-ghost" +
+                          (active ? " tuner-pitch-ghost--active" : "")
+                        }
+                        style={
+                          {
+                            "--pitch-y": `${midiToLanePercent(reading.midi)}%`,
+                          } as CSSProperties
+                        }
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     <button
                       type="button"
                       className={
@@ -293,10 +345,6 @@ export function TunerPanel({ onNeedAudioUnlock }: Props) {
             <span className="tuner-float-note">
               {reading.note}
               {reading.octave}
-            </span>
-            <span className="tuner-float-meta">
-              {reading.cents >= 0 ? "+" : ""}
-              {reading.cents.toFixed(0)}¢
             </span>
           </p>
         ) : null}
