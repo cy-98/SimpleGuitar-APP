@@ -47,6 +47,8 @@ export function SlideSeg<T extends string | number>({
     <div
       className={`slide-seg ${className}`.trim()}
       role="group"
+      data-cols={columns}
+      data-rows={rows}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       style={style}
