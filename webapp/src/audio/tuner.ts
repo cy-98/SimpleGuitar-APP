@@ -47,6 +47,12 @@ const RMS_GATE = 0.008;
 export const TUNER_MIDI_MIN = GUITAR_OPEN_MIDI[0]! - 6;
 export const TUNER_MIDI_MAX = GUITAR_OPEN_MIDI[5]! + 6;
 
+/** Visual nut: all open strings share this Y (0% = top, 100% = bottom). */
+export const TUNER_NUT_Y_PERCENT = 90;
+/** Fret travel shown above the nut (12 品). */
+export const TUNER_VISIBLE_FRETS = 12;
+const FRET_TOP_Y_PERCENT = 8;
+
 const STORAGE_KEY = "scale-pulse-custom-tuning";
 
 export function defaultStringTargets(): StringTargets {
@@ -96,20 +102,53 @@ export function columnIndexForString(id: TunerStringId): number {
   return TUNER_TAB_COLUMNS.indexOf(id);
 }
 
-/** 0% = top (high pitch), 100% = bottom. */
-export function midiToLanePercent(midi: number): number {
-  const span = TUNER_MIDI_MAX - TUNER_MIDI_MIN;
-  const t = (TUNER_MIDI_MAX - midi) / span;
-  return Math.max(0, Math.min(100, t * 100));
+export function defaultOpenMidi(id: TunerStringId): number {
+  return defaultStringTargets()[id];
 }
 
-export function lanePercentForTarget(midi: number): number {
-  return midiToLanePercent(midi);
+/** Semitones above that string’s default open (special tuning). */
+export function fretOffsetFromOpen(
+  id: TunerStringId,
+  targetMidi: number,
+): number {
+  return targetMidi - defaultOpenMidi(id);
 }
 
-export function percentToMidi(percent: number): number {
-  const t = Math.max(0, Math.min(100, percent)) / 100;
-  return TUNER_MIDI_MAX - t * (TUNER_MIDI_MAX - TUNER_MIDI_MIN);
+/** Y on a string: nut + upward semitones (incl. fractional cents). */
+export function pitchYOnString(midi: number, targetMidi: number): number {
+  const semitones = midi - targetMidi;
+  const clamped = Math.max(
+    -0.55,
+    Math.min(TUNER_VISIBLE_FRETS + 0.55, semitones),
+  );
+  const travel = TUNER_NUT_Y_PERCENT - FRET_TOP_Y_PERCENT;
+  return TUNER_NUT_Y_PERCENT - (clamped / TUNER_VISIBLE_FRETS) * travel;
+}
+
+/** All open targets render at the nut. */
+export function nutYPercent(): number {
+  return TUNER_NUT_Y_PERCENT;
+}
+
+/** Shared fret grid (same on every string). */
+export function fretLineYPercent(fret: number): number {
+  const travel = TUNER_NUT_Y_PERCENT - FRET_TOP_Y_PERCENT;
+  const f = Math.max(1, Math.min(TUNER_VISIBLE_FRETS, fret));
+  return TUNER_NUT_Y_PERCENT - (f / TUNER_VISIBLE_FRETS) * travel;
+}
+
+/** Map pointer Y on track → target MIDI (default open + frets upward). */
+export function targetMidiFromTrackY(
+  id: TunerStringId,
+  yPercentFromTop: number,
+): number {
+  if (yPercentFromTop >= TUNER_NUT_Y_PERCENT) {
+    return defaultOpenMidi(id);
+  }
+  const travel = TUNER_NUT_Y_PERCENT - FRET_TOP_Y_PERCENT;
+  const frets = ((TUNER_NUT_Y_PERCENT - yPercentFromTop) / travel) * TUNER_VISIBLE_FRETS;
+  const rounded = Math.round(Math.max(0, Math.min(TUNER_VISIBLE_FRETS, frets)));
+  return defaultOpenMidi(id) + rounded;
 }
 
 /** Horizontal nudge within a column (−50…+50 cents → roughly ±42%). */
