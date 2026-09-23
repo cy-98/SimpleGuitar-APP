@@ -24,8 +24,8 @@ enum Fretboard {
   static let stringLabels = ["e", "B", "G", "D", "A", "E"]
 
   static let positions: [FretPosition] = [
-    FretPosition(id: "all", label: "全部", fretFrom: fretMin, fretTo: fretMax),
-    FretPosition(id: "open", label: "开放", fretFrom: 0, fretTo: 4),
+    FretPosition(id: "all", label: "All", fretFrom: fretMin, fretTo: fretMax),
+    FretPosition(id: "open", label: "Open", fretFrom: 0, fretTo: 4),
     FretPosition(id: "mid-low", label: "3–7", fretFrom: 3, fretTo: 7),
     FretPosition(id: "mid", label: "5–9", fretFrom: 5, fretTo: 9),
     FretPosition(id: "mid-high", label: "7–11", fretFrom: 7, fretTo: 11),

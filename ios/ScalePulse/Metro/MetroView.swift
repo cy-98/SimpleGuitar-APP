@@ -2,112 +2,221 @@ import SwiftUI
 
 struct MetroView: View {
   @EnvironmentObject private var settings: AppSettings
-  @StateObject private var engine = MetronomeEngine()
-  @State private var bpm: Double = 100
-  @State private var beatsPerBar = 4
-  @State private var subdivision = 1
+  @EnvironmentObject private var session: AppSession
+
+  var body: some View {
+    MetroBody(engine: session.metronome)
+  }
+}
+
+private struct MetroBody: View {
+  @EnvironmentObject private var settings: AppSettings
+  @EnvironmentObject private var session: AppSession
+  let engine: MetronomeEngine
 
   var body: some View {
     VStack(spacing: 12) {
-      Button {
-        syncEngine()
-        engine.toggle()
-      } label: {
-        ZStack {
-          beatGrid
-          Image(systemName: engine.isRunning ? "pause.fill" : "play.fill")
-            .font(.system(size: 36, weight: .semibold))
-            .foregroundStyle(settings.theme.ink.opacity(0.38))
-            .shadow(color: settings.theme.ink.opacity(0.18), radius: 8, y: 4)
-            .padding(.leading, engine.isRunning ? 0 : 3)
-        }
+      BeatStage(engine: engine)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(settings.theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-      }
-      .buttonStyle(.plain)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
-      VStack(spacing: 0) {
-        field {
-          HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("速度")
-              .font(.system(size: 11, weight: .bold))
-              .foregroundStyle(settings.theme.inkMuted)
-              .textCase(.uppercase)
-            Text("\(Int(bpm)) BPM")
-              .font(.system(size: 13, weight: .semibold).monospacedDigit())
-              .foregroundStyle(settings.theme.inkMuted)
-          }
-          HStack(spacing: 10) {
-            stepButton("−") { bpm = max(40, bpm - 1) }
-            Slider(value: $bpm, in: 40...240, step: 1)
-              .tint(settings.theme.accent)
-              .onChange(of: bpm) { _, _ in syncEngine() }
-            stepButton("+") { bpm = min(240, bpm + 1) }
-          }
-        }
-        divider
-        field {
-          label("拍号")
-          SegControl(
-            options: [(2, "2/4"), (3, "3/4"), (4, "4/4")],
-            selection: $beatsPerBar
-          )
-          .onChange(of: beatsPerBar) { _, _ in syncEngine() }
-        }
-        divider
-        field {
-          label("细分")
-          SegControl(
-            options: [(1, "四分"), (2, "八分"), (4, "十六分")],
-            selection: $subdivision
-          )
-          .onChange(of: subdivision) { _, _ in syncEngine() }
-        }
-      }
-      .background(settings.theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+      MetroControls(engine: engine)
+        .background(settings.theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
-    .onAppear(perform: syncEngine)
-    .onChange(of: settings.sound) { _, _ in syncEngine() }
-    .onChange(of: settings.muteUpbeats) { _, _ in syncEngine() }
-    .onDisappear { engine.stop() }
+    .onAppear {
+      engine.uiObserving = true
+      sync()
+    }
+    .onDisappear {
+      engine.uiObserving = false
+    }
+  }
+
+  private func sync() {
+    engine.apply(
+      bpm: Int(session.bpm),
+      beatsPerBar: session.beatsPerBar,
+      pattern: session.pattern,
+      sound: settings.sound,
+      muteUpbeats: settings.muteUpbeats,
+      accents: session.beatAccents
+    )
+  }
+}
+
+private struct BeatStage: View {
+  @EnvironmentObject private var settings: AppSettings
+  @EnvironmentObject private var session: AppSession
+  @ObservedObject var engine: MetronomeEngine
+
+  var body: some View {
+    ZStack {
+      beatGrid
+      playButton
+    }
   }
 
   private var beatGrid: some View {
-    HStack(spacing: 0) {
-      ForEach(0..<beatsPerBar, id: \.self) { b in
-        VStack(spacing: 0) {
-          ForEach(0..<subdivision, id: \.self) { s in
-            let on = engine.tick?.beatIndex == b && engine.tick?.subdivIndex == s
-            let accent = on && (engine.tick?.accent == true)
-            Rectangle()
-              .fill(
-                on
-                  ? (accent ? settings.theme.accent.opacity(0.2) : settings.theme.ink.opacity(0.1))
-                  : settings.theme.ink.opacity(0.03)
-              )
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
+    let weights = session.pattern.cellWeights
+    return HStack(spacing: 0) {
+      ForEach(0..<session.beatsPerBar, id: \.self) { b in
+        let isAccent = session.beatAccents.indices.contains(b) && session.beatAccents[b]
+        Button {
+          session.toggleAccent(at: b)
+        } label: {
+          GeometryReader { geo in
+            let total = weights.reduce(0, +)
+            VStack(spacing: 0) {
+              ForEach(weights.indices, id: \.self) { s in
+                let on = engine.tick?.beatIndex == b && engine.tick?.subdivIndex == s
+                let litAccent = on && (engine.tick?.accent == true)
+                let h = total > 0 ? geo.size.height * weights[s] / total : geo.size.height
+                Rectangle()
+                  .fill(cellFill(on: on, litAccent: litAccent, beatAccent: isAccent))
+                  .frame(width: geo.size.width, height: h)
+              }
+            }
           }
+          .overlay(alignment: .top) {
+            Capsule()
+              .fill(isAccent ? settings.theme.accent : settings.theme.ink.opacity(0.12))
+              .frame(width: 18, height: 4)
+              .padding(.top, 10)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Beat \(b + 1)")
+        .accessibilityValue(isAccent ? "Accent on" : "Accent off")
+        .accessibilityHint("Double tap to toggle accent")
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+  }
+
+  private var playButton: some View {
+    Button {
+      sync()
+      engine.toggle()
+    } label: {
+      Image(systemName: engine.isRunning ? "pause.fill" : "play.fill")
+        .font(.system(size: 36, weight: .semibold))
+        .foregroundStyle(settings.theme.ink.opacity(0.38))
+        .shadow(color: settings.theme.ink.opacity(0.18), radius: 8, y: 4)
+        .padding(.leading, engine.isRunning ? 0 : 3)
+        .frame(width: 88, height: 88)
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(engine.isRunning ? "Pause" : "Play")
+  }
+
+  private func cellFill(on: Bool, litAccent: Bool, beatAccent: Bool) -> Color {
+    if on {
+      return litAccent
+        ? settings.theme.accent.opacity(0.28)
+        : settings.theme.ink.opacity(0.12)
+    }
+    if beatAccent {
+      return settings.theme.accent.opacity(0.08)
+    }
+    return settings.theme.ink.opacity(0.03)
+  }
+
+  private func sync() {
+    engine.apply(
+      bpm: Int(session.bpm),
+      beatsPerBar: session.beatsPerBar,
+      pattern: session.pattern,
+      sound: settings.sound,
+      muteUpbeats: settings.muteUpbeats,
+      accents: session.beatAccents
+    )
+  }
+}
+
+private struct MetroControls: View {
+  @EnvironmentObject private var settings: AppSettings
+  @EnvironmentObject private var session: AppSession
+  let engine: MetronomeEngine
+
+  var body: some View {
+    VStack(spacing: 0) {
+      field {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+          Text("Tempo")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(settings.theme.inkMuted)
+            .textCase(.uppercase)
+          Text("\(Int(session.bpm)) BPM")
+            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+            .foregroundStyle(settings.theme.inkMuted)
+        }
+        HStack(spacing: 10) {
+          stepButton("−") { session.bpm = max(40, session.bpm - 1) }
+          Slider(value: $session.bpm, in: 40...240, step: 1)
+            .tint(settings.theme.accent)
+            .onChange(of: session.bpm) { _, _ in syncEngine() }
+          stepButton("+") { session.bpm = min(240, session.bpm + 1) }
+        }
+      }
+      divider
+      field {
+        label("Meter")
+        SegControl(
+          options: [(2, "2/4"), (3, "3/4"), (4, "4/4")],
+          selection: $session.beatsPerBar
+        )
+        .onChange(of: session.beatsPerBar) { _, _ in syncEngine() }
+      }
+      divider
+      field {
+        label("Rhythm")
+        VStack(spacing: 6) {
+          SegControl(
+            options: [MetroPattern.quarter, .eighth, .sixteenth].map { ($0, $0.label) },
+            selection: $session.pattern
+          )
+          SegControl(
+            options: [MetroPattern.eighthThen16ths, .sixteenthsThenEighth].map { ($0, $0.label) },
+            selection: $session.pattern
+          )
+        }
+        .onChange(of: session.pattern) { _, _ in syncEngine() }
+      }
+      divider
+      field {
+        HStack {
+          label("Mute upbeats")
+          Spacer(minLength: 0)
+          Toggle("", isOn: $settings.muteUpbeats)
+            .labelsHidden()
+            .tint(settings.theme.accent)
+        }
+        .onChange(of: settings.muteUpbeats) { _, _ in syncEngine() }
+      }
+    }
+    .onChange(of: settings.sound) { _, _ in syncEngine() }
+    .onChange(of: session.beatAccents) { _, _ in syncEngine() }
   }
 
   private func syncEngine() {
-    engine.bpm = Int(bpm)
-    engine.beatsPerBar = beatsPerBar
-    engine.subdivision = subdivision
-    engine.sound = settings.sound
-    engine.muteUpbeats = settings.muteUpbeats
+    engine.apply(
+      bpm: Int(session.bpm),
+      beatsPerBar: session.beatsPerBar,
+      pattern: session.pattern,
+      sound: settings.sound,
+      muteUpbeats: settings.muteUpbeats,
+      accents: session.beatAccents
+    )
+    if engine.isRunning { engine.resyncTimeline() }
   }
 
   private func field<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-      content()
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
+    VStack(alignment: .leading, spacing: 8) { content() }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
   }
 
   private func label(_ text: String) -> some View {
@@ -130,34 +239,15 @@ struct MetroView: View {
         .font(.system(size: 22, weight: .semibold))
         .foregroundStyle(settings.theme.ink)
         .frame(width: 44, height: 44)
-        .background(settings.theme.canvas, in: Circle())
+        .background(settings.theme.ink.opacity(0.08), in: Circle())
     }
     .buttonStyle(.plain)
   }
 }
 
-struct SegControl<T: Hashable>: View {
-  @EnvironmentObject private var settings: AppSettings
-  let options: [(T, String)]
-  @Binding var selection: T
-
-  var body: some View {
-    HStack(spacing: 4) {
-      ForEach(options, id: \.0) { value, title in
-        Button {
-          selection = value
-        } label: {
-          Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(selection == value ? Color.white : settings.theme.inkMuted)
-            .frame(maxWidth: .infinity, minHeight: 36)
-            .background(
-              selection == value ? settings.theme.ink : settings.theme.canvas,
-              in: Capsule()
-            )
-        }
-        .buttonStyle(.plain)
-      }
-    }
-  }
+#Preview {
+  MetroView()
+    .environmentObject(AppSettings())
+    .environmentObject(AppSession())
+    .padding()
 }

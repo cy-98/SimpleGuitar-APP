@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 enum ThemeId: String, CaseIterable, Identifiable {
   case meadow, mist, blush, graphite, flare, tide
@@ -8,12 +8,12 @@ enum ThemeId: String, CaseIterable, Identifiable {
 
   var label: String {
     switch self {
-    case .meadow: return "草地"
-    case .mist: return "薄雾"
-    case .blush: return "暮粉"
-    case .graphite: return "石墨"
-    case .flare: return "焰橘"
-    case .tide: return "潮汐"
+    case .meadow: return "Meadow"
+    case .mist: return "Mist"
+    case .blush: return "Blush"
+    case .graphite: return "Graphite"
+    case .flare: return "Flare"
+    case .tide: return "Tide"
     }
   }
 }
@@ -62,12 +62,12 @@ struct ThemeMeta {
     case .graphite:
       return ThemeMeta(
         id: id,
-        canvas: Color(hex: 0x6E6E6E),
-        surface: Color(hex: 0xF2F2F2),
+        canvas: Color(hex: 0xD6D6D6),
+        surface: Color(hex: 0xF4F4F4),
         ink: Color(hex: 0x1A1A1A),
-        inkMuted: Color(hex: 0x555555),
-        accent: Color(hex: 0x333333),
-        accentSoft: Color(hex: 0x989898)
+        inkMuted: Color(hex: 0x5A5A5A),
+        accent: Color(hex: 0x2E2E2E),
+        accentSoft: Color(hex: 0xB0B0B0)
       )
     case .flare:
       return ThemeMeta(
@@ -109,10 +109,10 @@ enum SoundId: String, CaseIterable, Identifiable {
 
   var label: String {
     switch self {
-    case .click: return "滴答"
-    case .drum: return "鼓声"
-    case .wood: return "木鱼"
-    case .clap: return "拍手"
+    case .click: return "Click"
+    case .drum: return "Drum"
+    case .wood: return "Wood"
+    case .clap: return "Clap"
     }
   }
 }
@@ -121,15 +121,18 @@ final class AppSettings: ObservableObject {
   @Published var themeId: ThemeId {
     didSet { UserDefaults.standard.set(themeId.rawValue, forKey: Keys.theme) }
   }
+
   @Published var sound: SoundId {
     didSet { UserDefaults.standard.set(sound.rawValue, forKey: Keys.sound) }
   }
+
   @Published var volume: Double {
     didSet {
       UserDefaults.standard.set(volume, forKey: Keys.volume)
       TonePlayer.shared.masterVolume = Float(volume)
     }
   }
+
   @Published var muteUpbeats: Bool {
     didSet { UserDefaults.standard.set(muteUpbeats, forKey: Keys.muteUpbeats) }
   }
@@ -147,7 +150,7 @@ final class AppSettings: ObservableObject {
     let t = UserDefaults.standard.string(forKey: Keys.theme).flatMap(ThemeId.init) ?? .mist
     let s = UserDefaults.standard.string(forKey: Keys.sound).flatMap(SoundId.init) ?? .click
     let v = UserDefaults.standard.object(forKey: Keys.volume) as? Double ?? 0.85
-    let m = UserDefaults.standard.bool(forKey: Keys.muteUpbeats)
+    let m = UserDefaults.standard.object(forKey: Keys.muteUpbeats) as? Bool ?? true
     themeId = t
     sound = s
     volume = v
