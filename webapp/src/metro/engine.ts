@@ -1,6 +1,7 @@
 import {
   getAudioContext,
   playTick,
+  primeMetronomeAudio,
   resumeAudio,
   unlockAudioSync,
   type SoundId,
@@ -86,10 +87,14 @@ export class MetronomeEngine {
     this.muteUpbeats = mute;
   }
 
-  async start(): Promise<void> {
-    if (this.running) return;
+  async start(): Promise<boolean> {
+    if (this.running) return true;
     unlockAudioSync();
+    primeMetronomeAudio(this.sound);
     const ctx = await resumeAudio();
+    if (ctx.state !== "running") {
+      return false;
+    }
     this.running = true;
     this.currentBeat = 0;
     this.currentSubdiv = 0;
@@ -99,6 +104,7 @@ export class MetronomeEngine {
     this.scheduler();
     this.timerId = window.setInterval(() => this.scheduler(), LOOKAHEAD_MS);
     this.pumpVisual();
+    return true;
   }
 
   stop(): void {
@@ -126,6 +132,10 @@ export class MetronomeEngine {
   private scheduler(): void {
     if (!this.running) return;
     const ctx = getAudioContext();
+    if (ctx.state !== "running") {
+      unlockAudioSync();
+      return;
+    }
     while (this.nextNoteTime < ctx.currentTime + SCHEDULE_AHEAD) {
       const beat = this.currentBeat;
       const subdiv = this.currentSubdiv;

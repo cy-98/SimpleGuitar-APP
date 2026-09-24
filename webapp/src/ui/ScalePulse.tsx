@@ -147,6 +147,7 @@ export default function ScalePulse() {
   const [audioHint, setAudioHint] = useState<string | null>(null);
 
   const metroRef = useRef<MetronomeEngine | null>(null);
+  const playGestureRef = useRef(0);
 
   function syncAudioHint(): void {
     setAudioHint(isAudioRunning() ? null : AUDIO_BLOCKED_HINT);
@@ -192,9 +193,11 @@ export default function ScalePulse() {
     const opts: AddEventListenerOptions = { capture: true, passive: true };
     document.addEventListener("touchstart", unlockFromGesture, opts);
     document.addEventListener("pointerdown", unlockFromGesture, opts);
+    document.addEventListener("click", unlockFromGesture, opts);
     return () => {
       document.removeEventListener("touchstart", unlockFromGesture, opts);
       document.removeEventListener("pointerdown", unlockFromGesture, opts);
+      document.removeEventListener("click", unlockFromGesture, opts);
     };
   }, []);
 
@@ -266,7 +269,7 @@ export default function ScalePulse() {
     metroRef.current?.setMuteUpbeats(muteUpbeats);
   }, [muteUpbeats]);
 
-  async function togglePlay() {
+  function togglePlay() {
     unlockAudioSync();
     const metro = metroRef.current;
     if (!metro) return;
@@ -275,11 +278,17 @@ export default function ScalePulse() {
       setRunning(false);
       setTick(null);
       setAudioHint(null);
-    } else {
-      await metro.start();
-      setRunning(true);
-      syncAudioHint();
+      return;
     }
+    void metro.start().then((started) => {
+      if (started) {
+        setRunning(true);
+        setAudioHint(null);
+      } else {
+        setRunning(false);
+        syncAudioHint();
+      }
+    });
   }
 
   function changeKey(next: MajorKey, opts?: { silent?: boolean }) {
@@ -398,8 +407,26 @@ export default function ScalePulse() {
                   className="stage"
                   aria-pressed={running}
                   aria-label={running ? "暂停" : "播放"}
-                  onPointerDown={() => unlockAudioSync()}
-                  onClick={() => void togglePlay()}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return;
+                    unlockAudioSync();
+                  }}
+                  onPointerUp={(e) => {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    playGestureRef.current = Date.now();
+                    togglePlay();
+                  }}
+                  onClick={(e) => {
+                    if (Date.now() - playGestureRef.current < 500) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    togglePlay();
+                  }}
                 >
                   {running ? (
                     <svg
