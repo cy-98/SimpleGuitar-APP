@@ -150,24 +150,41 @@ export function getMasterVolume(): number {
   return masterVolume;
 }
 
+function waitForRunning(ctx: AudioContext, timeoutMs: number): Promise<void> {
+  if (ctx.state === "running") return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      ctx.removeEventListener("statechange", onState);
+      clearTimeout(timer);
+      resolve();
+    };
+    const onState = () => {
+      if (ctx.state === "running") finish();
+    };
+    const timer = window.setTimeout(finish, timeoutMs);
+    ctx.addEventListener("statechange", onState);
+  });
+}
+
 export async function resumeAudio(): Promise<AudioContext> {
   const ctx = unlockAudioSync();
-  if (ctx.state !== "running") {
-    try {
-      await ctx.resume();
-    } catch {
-      /* ignore */
-    }
+  if (ctx.state === "running") {
+    getOutput(ctx);
+    return ctx;
   }
+  try {
+    await ctx.resume();
+  } catch {
+    /* ignore */
+  }
+  await waitForRunning(ctx, 300);
   if (ctx.state !== "running") {
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 0);
-    });
     try {
       await ctx.resume();
     } catch {
       /* ignore */
     }
+    await waitForRunning(ctx, 300);
   }
   getOutput(ctx);
   return ctx;
@@ -439,6 +456,25 @@ export function playTick(
     return;
   }
   playVoice(id, ctx, time, accent);
+}
+
+/** Audible + silent pulse while still inside a user gesture (iOS unlock). */
+export function primeMetronomeAudio(
+  sound: SoundId,
+  ctx: AudioContext = getAudioContext(),
+): void {
+  const output = getOutput(ctx);
+  try {
+    playSilentUnlockPulse(ctx, output);
+  } catch {
+    /* ignore */
+  }
+  try {
+    const t = ctx.currentTime + 0.012;
+    playTick(sound, ctx, t, true, false);
+  } catch {
+    /* ignore */
+  }
 }
 
 function playUpbeat(id: SoundId, ctx: AudioContext, time: number): void {
