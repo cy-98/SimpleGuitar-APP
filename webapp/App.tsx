@@ -25,7 +25,7 @@ export default function App() {
           name="apple-mobile-web-app-status-bar-style"
           content="default"
         />
-        <title>Scale Pulse</title>
+        <title>Jita</title>
         <link
           href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap"
           rel="stylesheet"

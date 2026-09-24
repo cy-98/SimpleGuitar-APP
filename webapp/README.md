@@ -1,4 +1,4 @@
-# Scale Pulse — Web App
+# Jita — Web App
 
 Web 端源码。产品说明见 [`../APP.md`](../APP.md)。
 

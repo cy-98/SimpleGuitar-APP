@@ -940,17 +940,17 @@ input[type="range"]::-moz-range-thumb {
 
 .slide-seg.sound-seg {
   width: 100%;
-  --seg-pad: 0.35rem;
-  --seg-gap: 0.42rem;
-  min-height: calc(2 * 3.05rem + var(--seg-gap) + 2 * var(--seg-pad));
+  --seg-pad: 0;
+  --seg-gap: 0.55rem;
+  min-height: calc(2 * 3.05rem + var(--seg-gap));
   grid-template-rows: repeat(2, minmax(3.05rem, 1fr));
-  border-radius: calc(var(--radius-card) - 8px);
-  background: color-mix(in srgb, var(--ink) 4%, var(--surface-soft));
-  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .slide-seg.sound-seg .slide-seg-thumb {
-  border-radius: calc(var(--radius-card) - 12px);
+  display: none;
 }
 
 .slide-seg.sound-seg .slide-seg-option {
@@ -962,10 +962,16 @@ input[type="range"]::-moz-range-thumb {
   opacity: 1;
   color: var(--ink-muted);
   border-radius: calc(var(--radius-card) - 12px);
+  background: var(--surface-soft);
 }
 
 .slide-seg.sound-seg .slide-seg-option[aria-selected="true"] {
+  background: var(--accent);
   color: #ffffff;
+}
+
+.slide-seg.sound-seg .slide-seg-option:focus-visible {
+  outline: none;
 }
 
 .settings-row--volume {
