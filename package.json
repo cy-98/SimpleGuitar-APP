@@ -2,7 +2,7 @@
   "name": "scale-pulse",
   "private": true,
   "version": "0.0.0",
-  "description": "Scale Pulse — webapp + iOS (SwiftUI) + shared core",
+  "description": "Jita — webapp + iOS (SwiftUI) + shared core",
   "scripts": {
     "dev": "npm run dev --prefix webapp",
     "build": "npm run build --prefix webapp",

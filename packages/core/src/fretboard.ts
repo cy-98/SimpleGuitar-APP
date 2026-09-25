@@ -25,7 +25,6 @@ export const FRET_MAX = 12;
 
 export type PositionId =
   | "all"
-  | "open"
   | "mid-low"
   | "mid"
   | "mid-high"
@@ -41,7 +40,6 @@ export type FretPosition = {
 /** Fret windows for first-version position practice (overlapping boxes). */
 export const POSITIONS: readonly FretPosition[] = [
   { id: "all", label: "全部", fretFrom: FRET_MIN, fretTo: FRET_MAX },
-  { id: "open", label: "开放", fretFrom: 0, fretTo: 4 },
   { id: "mid-low", label: "3–7", fretFrom: 3, fretTo: 7 },
   { id: "mid", label: "5–9", fretFrom: 5, fretTo: 9 },
   { id: "mid-high", label: "7–11", fretFrom: 7, fretTo: 11 },

@@ -1,25 +1,34 @@
 import SwiftUI
 
-enum AppTab: Hashable {
-  case metro, theory, settings
+enum AppTab: Hashable, CaseIterable, Identifiable {
+  case metro, theory, tuner, settings
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .metro: return "Metro"
+    case .theory: return "Degrees"
+    case .tuner: return "Tuner"
+    case .settings: return "Settings"
+    }
+  }
+
+  var index: Int {
+    AppTab.allCases.firstIndex(of: self) ?? 0
+  }
 }
 
 private enum RootLayout {
   static let inset: CGFloat = 16
   static let tabPadding: CGFloat = 6
   static let contentToTab: CGFloat = 12
+  static let tabMinHeight: CGFloat = 48
 }
 
 struct RootTabView: View {
   @EnvironmentObject private var settings: AppSettings
   @EnvironmentObject private var session: AppSession
-  @Namespace private var tabNamespace
-
-  private let tabs: [(AppTab, String)] = [
-    (.metro, "Metro"),
-    (.theory, "Degrees"),
-    (.settings, "Settings"),
-  ]
 
   var body: some View {
     ZStack {
@@ -34,16 +43,20 @@ struct RootTabView: View {
       )
       .ignoresSafeArea()
 
-      Group {
-        switch session.tab {
-        case .metro:
-          MetroView()
-        case .theory:
-          TheoryView()
-        case .settings:
-          SettingsView()
-        }
+      TabView(selection: $session.tab) {
+        MetroView()
+          .tag(AppTab.metro)
+        TheoryView()
+          .tag(AppTab.theory)
+        TunerView()
+          .tag(AppTab.tuner)
+        SettingsView()
+          .tag(AppTab.settings)
       }
+      .tabViewStyle(.page(indexDisplayMode: .never))
+      // Keep page turn light — spring here tanks swipe FPS.
+      .transaction { $0.animation = .easeInOut(duration: 0.18) }
+      .environment(\.activeTab, session.tab)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .padding(.horizontal, RootLayout.inset)
       .padding(.top, RootLayout.inset)
@@ -55,37 +68,51 @@ struct RootTabView: View {
         }
       }
     }
+    .onAppear { syncOrientation() }
+    .onChange(of: session.tab) { _, _ in syncOrientation() }
+    .onChange(of: session.fretboardFullscreen) { _, _ in syncOrientation() }
+  }
+
+  private func syncOrientation() {
+    OrientationLock.sync(tab: session.tab, fretboardFullscreen: session.fretboardFullscreen)
   }
 
   private var tabBar: some View {
-    HStack(spacing: 4) {
-      ForEach(tabs, id: \.0) { id, title in
-        tabButton(id, title)
-      }
-    }
-    .padding(RootLayout.tabPadding)
-    .background(settings.theme.surface, in: Capsule())
-  }
+    let pad = RootLayout.tabPadding
+    let tabs = AppTab.allCases
 
-  private func tabButton(_ id: AppTab, _ title: String) -> some View {
-    Button {
-      withAnimation(.spring(response: 0.38, dampingFraction: 0.82, blendDuration: 0)) {
-        session.tab = id
-      }
-    } label: {
-      Text(title)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(session.tab == id ? Color.white : settings.theme.inkMuted)
-        .frame(maxWidth: .infinity, minHeight: 48)
-        .background {
-          if session.tab == id {
-            Capsule()
-              .fill(settings.theme.ink)
-              .matchedGeometryEffect(id: "tab-pill", in: tabNamespace)
-          }
+    return HStack(spacing: 4) {
+      ForEach(tabs) { id in
+        Button {
+          session.tab = id
+        } label: {
+          Text(id.title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(session.tab == id ? Color.white : settings.theme.inkMuted)
+            .frame(maxWidth: .infinity, minHeight: RootLayout.tabMinHeight)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+      }
     }
-    .buttonStyle(.plain)
+    .padding(pad)
+    .background {
+      GeometryReader { geo in
+        let count = CGFloat(tabs.count)
+        let gap: CGFloat = 4
+        let innerW = geo.size.width - pad * 2
+        let cellW = (innerW - gap * (count - 1)) / count
+        let thumbH = geo.size.height - pad * 2
+        let idx = CGFloat(session.tab.index)
+        Capsule()
+          .fill(settings.theme.surface)
+        Capsule()
+          .fill(settings.theme.ink)
+          .frame(width: cellW, height: thumbH)
+          .offset(x: pad + idx * (cellW + gap), y: pad)
+          .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9), value: session.tab)
+      }
+    }
   }
 }
 

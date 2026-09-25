@@ -12,6 +12,7 @@ struct MetroView: View {
 private struct MetroBody: View {
   @EnvironmentObject private var settings: AppSettings
   @EnvironmentObject private var session: AppSession
+  @Environment(\.activeTab) private var activeTab
   let engine: MetronomeEngine
 
   var body: some View {
@@ -24,13 +25,15 @@ private struct MetroBody: View {
       MetroControls(engine: engine)
         .background(settings.theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
-    .onAppear {
-      engine.uiObserving = true
-      sync()
-    }
-    .onDisappear {
-      engine.uiObserving = false
-    }
+    .onAppear { updateObserving() }
+    .onDisappear { engine.uiObserving = false }
+    .onChange(of: activeTab) { _, _ in updateObserving() }
+  }
+
+  private func updateObserving() {
+    let active = activeTab == .metro
+    engine.uiObserving = active
+    if active { sync() }
   }
 
   private func sync() {
@@ -55,6 +58,8 @@ private struct BeatStage: View {
       beatGrid
       playButton
     }
+    // Instant cell flash — any implicit animation makes the click feel early.
+    .transaction { $0.animation = nil }
   }
 
   private var beatGrid: some View {
@@ -154,11 +159,30 @@ private struct MetroControls: View {
             .foregroundStyle(settings.theme.inkMuted)
         }
         HStack(spacing: 10) {
-          stepButton("−") { session.bpm = max(40, session.bpm - 1) }
-          Slider(value: $session.bpm, in: 40...240, step: 1)
-            .tint(settings.theme.accent)
-            .onChange(of: session.bpm) { _, _ in syncEngine() }
-          stepButton("+") { session.bpm = min(240, session.bpm + 1) }
+          stepButton("−") {
+            session.bpm = max(40, session.bpm - 1)
+            syncEngine(resync: true)
+          }
+          Slider(value: $session.bpm, in: 40...240, step: 1) { editing in
+            if editing {
+              // Cheap live tempo update — no timeline rebuild while finger moves.
+              engine.apply(
+                bpm: Int(session.bpm),
+                beatsPerBar: session.beatsPerBar,
+                pattern: session.pattern,
+                sound: settings.sound,
+                muteUpbeats: settings.muteUpbeats,
+                accents: session.beatAccents
+              )
+            } else {
+              syncEngine(resync: true)
+            }
+          }
+          .tint(settings.theme.accent)
+          stepButton("+") {
+            session.bpm = min(240, session.bpm + 1)
+            syncEngine(resync: true)
+          }
         }
       }
       divider
@@ -168,7 +192,7 @@ private struct MetroControls: View {
           options: [(2, "2/4"), (3, "3/4"), (4, "4/4")],
           selection: $session.beatsPerBar
         )
-        .onChange(of: session.beatsPerBar) { _, _ in syncEngine() }
+        .onChange(of: session.beatsPerBar) { _, _ in syncEngine(resync: true) }
       }
       divider
       field {
@@ -183,7 +207,7 @@ private struct MetroControls: View {
             selection: $session.pattern
           )
         }
-        .onChange(of: session.pattern) { _, _ in syncEngine() }
+        .onChange(of: session.pattern) { _, _ in syncEngine(resync: true) }
       }
       divider
       field {
@@ -194,14 +218,15 @@ private struct MetroControls: View {
             .labelsHidden()
             .tint(settings.theme.accent)
         }
-        .onChange(of: settings.muteUpbeats) { _, _ in syncEngine() }
+        .onChange(of: settings.muteUpbeats) { _, _ in syncEngine(resync: false) }
       }
     }
-    .onChange(of: settings.sound) { _, _ in syncEngine() }
-    .onChange(of: session.beatAccents) { _, _ in syncEngine() }
+    .onChange(of: settings.sound) { _, _ in syncEngine(resync: false) }
+    .onChange(of: session.beatAccents) { _, _ in syncEngine(resync: false) }
   }
 
-  private func syncEngine() {
+  /// - Parameter resync: restart the host timeline (tempo / meter / rhythm). Accents & mute apply live.
+  private func syncEngine(resync: Bool) {
     engine.apply(
       bpm: Int(session.bpm),
       beatsPerBar: session.beatsPerBar,
@@ -210,7 +235,7 @@ private struct MetroControls: View {
       muteUpbeats: settings.muteUpbeats,
       accents: session.beatAccents
     )
-    if engine.isRunning { engine.resyncTimeline() }
+    if resync, engine.isRunning { engine.resyncTimeline() }
   }
 
   private func field<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

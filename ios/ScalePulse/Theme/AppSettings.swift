@@ -149,7 +149,7 @@ final class AppSettings: ObservableObject {
   init() {
     let t = UserDefaults.standard.string(forKey: Keys.theme).flatMap(ThemeId.init) ?? .mist
     let s = UserDefaults.standard.string(forKey: Keys.sound).flatMap(SoundId.init) ?? .click
-    let v = UserDefaults.standard.object(forKey: Keys.volume) as? Double ?? 0.85
+    let v = UserDefaults.standard.object(forKey: Keys.volume) as? Double ?? 1.0
     let m = UserDefaults.standard.object(forKey: Keys.muteUpbeats) as? Bool ?? true
     themeId = t
     sound = s

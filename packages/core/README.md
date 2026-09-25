@@ -1,6 +1,6 @@
 # @scale-pulse/core
 
-Shared music-theory helpers for Scale Pulse (Web + Mobile).
+Shared music-theory helpers for Jita (Web + Mobile).
 
 - `scales` — major keys, solfege, degree spelling
 - `fretboard` — standard tuning dots + practice positions

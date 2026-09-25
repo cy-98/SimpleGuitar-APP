@@ -1,4 +1,4 @@
-# Scale Pulse iOS — Architecture Overview
+# Jita iOS — Architecture Overview
 
 Phone-first **metronome + major-scale degree practice**. Spec: [`APP.md`](../APP.md). UI language: English.
 
@@ -7,7 +7,7 @@ Phone-first **metronome + major-scale degree practice**. Spec: [`APP.md`](../APP
 ## 1. Product shape
 
 ```
-Scale Pulse
+Jita
 ├── Metro      — tempo / meter / rhythm patterns, per-beat accent, mute upbeats
 ├── Degrees    — ring chart, diatonic chord dictionary + shapes, fullscreen fretboard
 └── Settings   — sound icons, volume, themes

@@ -20,12 +20,20 @@ final class AppSession: ObservableObject {
 
   @Published var theoryKey = "C"
   @Published var theoryPane: TheoryPane = .ring
-  @Published var positionId = "all"
+  @Published var positionId = "open"
+  /// Match web `showNoteLetters`: on = note + degree; off = degree only.
+  @Published var showNoteLetters = true
   @Published var fretboardFullscreen = false
 
   func toggleAccent(at index: Int) {
     guard beatAccents.indices.contains(index) else { return }
     beatAccents[index].toggle()
+  }
+
+  /// App left the foreground — stop metronome ticks and free the audio session.
+  func suspendForBackground() {
+    metronome.stop()
+    TonePlayer.shared.suspendIfIdle()
   }
 
   private func resizeAccents(to count: Int) {

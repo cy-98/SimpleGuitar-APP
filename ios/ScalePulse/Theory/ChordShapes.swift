@@ -71,12 +71,17 @@ enum ChordShapes {
       default: return nil
       }
     case .diminished:
-      // Movable dim shape relative to open Bdim (x x 0 1 0 1) shifted by root.
-      // Root on G string (index 2) at fret f → [f+1, f, f+1, f, nil, nil]
-      let openG = 7 // G pitch class
-      let f = (rootPc - openG + 12) % 12
-      if f <= 8 {
-        return [f + 1, f, f + 1, f, nil, nil]
+      // Movable dim triad: root on A string → [—, b3, —, b5, R, —]
+      let aFret = (rootPc - 9 + 12) % 12
+      if aFret >= 1 && aFret <= 10 {
+        let f = aFret
+        return [nil, f + 1, nil, f + 1, f, nil]
+      }
+      // Fallback: root on low E → [—, —, —, b5, b3, R]
+      let eFret = (rootPc - 4 + 12) % 12
+      if eFret >= 4 && eFret <= 10 {
+        let f = eFret
+        return [nil, nil, nil, f - 4, f - 2, f]
       }
       return nil
     }
@@ -108,13 +113,14 @@ enum ChordShapes {
         return [f, f + 1, f + 2, f + 2, f, nil]
       }
     case .diminished:
-      if aFret >= 1 && aFret <= 7 {
+      // Same movable dim triads as openShape (prefer A-root, else E-root).
+      if aFret >= 1 && aFret <= 10 {
         let f = aFret
-        return [nil, f + 2, f + 3, f + 4, f, nil]
+        return [nil, f + 1, nil, f + 1, f, nil]
       }
-      if eFret >= 1 && eFret <= 7 {
+      if eFret >= 4 && eFret <= 10 {
         let f = eFret
-        return [f + 1, f, f + 1, f, nil, f]
+        return [nil, nil, nil, f - 4, f - 2, f]
       }
     }
     return nil

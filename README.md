@@ -1,4 +1,4 @@
-# Scale Pulse
+# Jita
 
 节拍器 + 大调调内级数练习。
 

@@ -30,10 +30,13 @@ final class MetronomeEngine: ObservableObject {
   private var scheduleCursor = 0
   private var uiCursor = 0
   private var epoch: UInt64 = 0
+  /// Wall time along the tick timeline when paused; resume continues from here.
+  private var pausedElapsed: Double?
 
   private let lookahead: Double = 0.15
-  /// Flash the grid slightly early so SwiftUI paint lands with the audible click.
-  private let visualLead: Double = 0.012
+  /// Flash the grid early enough that SwiftUI paint lands with — or slightly before — the click.
+  /// ~3 frames @ 60Hz; near-horizon ticks also force an immediate main-queue publish (see pump).
+  private let visualLead: Double = 0.055
 
   /// Push live UI params into the engine (call from main).
   func apply(
@@ -44,12 +47,16 @@ final class MetronomeEngine: ObservableObject {
     muteUpbeats: Bool,
     accents: [Bool]
   ) {
+    let topologyChanged = beatsPerBar != self.beatsPerBar || pattern != self.pattern
     self.bpm = bpm
     self.beatsPerBar = beatsPerBar
     self.pattern = pattern
     self.sound = sound
     self.muteUpbeats = muteUpbeats
     self.accents = accents
+    if topologyChanged {
+      queue.async { [weak self] in self?.clearPausedPositionLocked() }
+    }
   }
 
   func start() {
@@ -75,6 +82,7 @@ final class MetronomeEngine: ObservableObject {
       self.anchorHost = mach_absolute_time()
       self.scheduleCursor = 0
       self.uiCursor = 0
+      self.pausedElapsed = nil
       self.pumpSchedule(epoch: self.epoch)
     }
   }
@@ -87,9 +95,19 @@ final class MetronomeEngine: ObservableObject {
     TonePlayer.shared.resetTickSchedule()
     epoch &+= 1
     running = true
-    anchorHost = mach_absolute_time()
-    scheduleCursor = 0
-    uiCursor = 0
+
+    if let elapsed = pausedElapsed {
+      // Resume: shift anchor so the timeline continues from the pause point.
+      let nowHost = mach_absolute_time()
+      let offset = AVAudioTime.hostTime(forSeconds: max(0, elapsed))
+      anchorHost = nowHost &- offset
+      pausedElapsed = nil
+    } else {
+      anchorHost = mach_absolute_time()
+      scheduleCursor = 0
+      uiCursor = 0
+    }
+
     DispatchQueue.main.async { self.isRunning = true }
     ensurePump()
     pumpSchedule(epoch: epoch)
@@ -97,15 +115,33 @@ final class MetronomeEngine: ObservableObject {
 
   private func stopLocked() {
     guard running else { return }
+    let elapsed = secondsSinceAnchor()
+    pausedElapsed = elapsed
+    // Rewind past lookahead so resume re-schedules the next tick at/after pause.
+    var n = scheduleCursor
+    while n > 0 && seconds(forTick: n - 1) >= elapsed {
+      n -= 1
+    }
+    scheduleCursor = n
+    uiCursor = min(uiCursor, n)
+
     running = false
     epoch &+= 1
     pump?.schedule(deadline: .now(), repeating: .never)
     TonePlayer.shared.resetTickSchedule()
     DispatchQueue.main.async {
       self.isRunning = false
-      self.tick = nil
+      // Keep `tick` so the grid stays on the paused beat.
       TonePlayer.shared.suspendIfIdle()
     }
+  }
+
+  private func clearPausedPositionLocked() {
+    guard !running else { return }
+    pausedElapsed = nil
+    scheduleCursor = 0
+    uiCursor = 0
+    DispatchQueue.main.async { self.tick = nil }
   }
 
   private func ensurePump() {
@@ -123,35 +159,22 @@ final class MetronomeEngine: ObservableObject {
 
   // MARK: - Absolute timeline
 
-  private func beatSeconds() -> Double {
-    60.0 / Double(max(1, bpm))
+  private var timeline: MetroTimeline {
+    MetroTimeline(
+      bpm: bpm,
+      beatsPerBar: beatsPerBar,
+      pattern: pattern,
+      muteUpbeats: muteUpbeats,
+      accents: accents
+    )
   }
 
   private func seconds(forTick n: Int) -> Double {
-    let onsets = pattern.onsets
-    let perBeat = max(1, onsets.count)
-    let beat = n / perBeat
-    let sub = n % perBeat
-    let dur = beatSeconds()
-    return Double(beat) * dur + onsets[sub] * dur
+    timeline.seconds(forTick: n)
   }
 
   private func info(forTick n: Int) -> TickInfo {
-    let onsets = pattern.onsets
-    let perBeat = max(1, onsets.count)
-    let absoluteBeat = n / perBeat
-    let subdiv = n % perBeat
-    let beatIndex = absoluteBeat % max(1, beatsPerBar)
-    let downbeatAccent = accents.indices.contains(beatIndex) ? accents[beatIndex] : (beatIndex == 0)
-    let accent = subdiv == 0 && downbeatAccent
-    let upbeat = subdiv != 0
-    let audible = !upbeat || !muteUpbeats
-    return TickInfo(
-      beatIndex: beatIndex,
-      subdivIndex: subdiv,
-      accent: accent,
-      audible: audible
-    )
+    timeline.info(forTick: n)
   }
 
   private func secondsSinceAnchor() -> Double {
@@ -178,6 +201,12 @@ final class MetronomeEngine: ObservableObject {
       let t = seconds(forTick: n)
       let info = info(forTick: n)
 
+      // UI first (especially for near ticks) so paint isn't stuck behind the click.
+      if uiObserving, n >= uiCursor, t >= now - 0.02 {
+        scheduleVisual(info: info, tickTime: t, now: now, epoch: epoch)
+        uiCursor = n + 1
+      }
+
       if info.audible, t >= now - 0.003 {
         TonePlayer.shared.scheduleTick(
           sound: sound,
@@ -187,19 +216,23 @@ final class MetronomeEngine: ObservableObject {
         )
       }
 
-      // UI on the same timeline (not the 20ms poll) — slight lead for render latency.
-      if uiObserving, n >= uiCursor, t >= now - 0.02 {
-        let delay = max(0, t - now - visualLead)
-        let tickN = n
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-          guard let self, self.epoch == epoch, self.isRunning else { return }
-          self.tick = info
-        }
-        uiCursor = tickN + 1
-      }
-
       scheduleCursor += 1
       steps += 1
+    }
+  }
+
+  private func scheduleVisual(info: TickInfo, tickTime: Double, now: Double, epoch: UInt64) {
+    let fireAt = tickTime - visualLead
+    let delay = fireAt - now
+    let publish = { [weak self] in
+      guard let self, self.epoch == epoch, self.isRunning else { return }
+      self.tick = info
+    }
+    if delay <= 0.001 {
+      // Already inside the lead window — push UI immediately (before/with this audio).
+      DispatchQueue.main.async(execute: publish)
+    } else {
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: publish)
     }
   }
 

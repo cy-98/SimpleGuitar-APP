@@ -1,4 +1,4 @@
-# 功能计划（Guitar / Scale Pulse）
+# 功能计划（Guitar / Jita）
 
 待实现方向的详细说明。实现前以这里为准对齐范围与验收。
 

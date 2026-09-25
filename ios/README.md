@@ -1,4 +1,4 @@
-# Scale Pulse — iOS (SwiftUI)
+# Jita — iOS (SwiftUI)
 
 Product: [`../APP.md`](../APP.md). Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md). **Needs macOS + Xcode.**
 

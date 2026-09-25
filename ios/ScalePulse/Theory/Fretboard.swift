@@ -24,16 +24,26 @@ enum Fretboard {
   static let stringLabels = ["e", "B", "G", "D", "A", "E"]
 
   static let positions: [FretPosition] = [
+    // Landscape-only: highlight every fret.
     FretPosition(id: "all", label: "All", fretFrom: fretMin, fretTo: fretMax),
-    FretPosition(id: "open", label: "Open", fretFrom: 0, fretTo: 4),
+    // Open / nut window — portrait default (5 frets: 0…4).
+    FretPosition(id: "open", label: "0–4", fretFrom: fretMin, fretTo: 4),
     FretPosition(id: "mid-low", label: "3–7", fretFrom: 3, fretTo: 7),
     FretPosition(id: "mid", label: "5–9", fretFrom: 5, fretTo: 9),
     FretPosition(id: "mid-high", label: "7–11", fretFrom: 7, fretTo: 11),
     FretPosition(id: "high", label: "9–12", fretFrom: 9, fretTo: 12),
   ]
 
+  /// Portrait: practice windows only (no full-board All).
+  static var portraitPositions: [FretPosition] {
+    positions.filter { $0.id != "all" }
+  }
+
+  /// Landscape: All + practice windows.
+  static var landscapePositions: [FretPosition] { positions }
+
   static func getPosition(_ id: String) -> FretPosition {
-    positions.first { $0.id == id } ?? positions[0]
+    positions.first { $0.id == id } ?? positions.first { $0.id == "open" }!
   }
 
   static func inPosition(fret: Int, pos: FretPosition) -> Bool {
